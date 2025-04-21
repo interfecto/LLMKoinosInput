@@ -2,29 +2,92 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LLM Docs for Koinos Blockchain</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --text: #e0e0e0;
+      --accent: #64b5f6;
+      --link: #90caf9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header, main, footer {
+      max-width: 800px;
+      width: 100%;
+      margin: auto;
+      padding: 1rem 1.5rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    h2 {
+      font-size: 1.5rem;
+      margin: 1.5rem 0 0.5rem;
+      border-bottom: 1px solid var(--surface);
+      padding-bottom: 0.25rem;
+    }
+    p { margin: 0.75rem 0; }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    nav ul, footer ul {
+      list-style: none;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 0.5rem 0;
+    }
+    pre {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: 5px;
+      overflow-x: auto;
+      margin: 0.5rem 0;
+    }
+    code {
+      font-family: 'Source Code Pro', monospace;
+      color: var(--text);
+    }
+    ul li { margin: 0.5rem 0; }
+    footer {
+      margin-top: auto;
+      border-top: 1px solid var(--surface);
+      padding-top: 1rem;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
-  <h1>LLM Docs for Koinos Blockchain</h1>
+  <header>
+    <h1>LLM Docs for Koinos Blockchain</h1>
+    <p>
+      Your AI‑optimized documentation hub for Koinos. Each page here is crafted
+      to give large language models (LLMs) like Cursor or ChatGPT exactly the
+      context they need to help you build on the chain.
+    </p>
+  </header>
 
-  <p>
-    Welcome to your AI‑optimized documentation hub for the Koinos blockchain. Each page here is structured
-    to give large language models (LLMs) like Cursor or ChatGPT exactly the
-    context they need to help you build on Koinos.
-  </p>
-
-  <h2>💡 How to Integrate with Cursor</h2>
-  <p>
-    1. Save your long‑form docs as Markdown in your repo, e.g.:
-  </p>
-  <pre><code class="language-bash">
-/docs/koinos-smart-contract.md
-  </code></pre>
-  <p>
-    2. Add a rule in <code>.cursor.json</code> so Cursor knows how to use it:
-  </p>
-  <pre><code class="language-json">
-{
+  <main>
+    <section>
+      <h2>How to Integrate with Cursor</h2>
+      <p>1. Save your long‑form docs as Markdown in your repo, e.g.:</p>
+      <pre><code>/docs/koinos-smart-contract.md</code></pre>
+      <p>2. Add a rule in <code>.cursor.json</code> so Cursor knows how to use it:</p>
+      <pre><code>{
   "rules": [
     {
       "pattern": "docs/koinos-smart-contract.md",
@@ -32,23 +95,30 @@
     }
   ]
 }
-  </code></pre>
+      </code></pre>
+    </section>
 
-  <h2>📂 Pages</h2>
-  <ul>
-    <li><a href="SmartContracts.html">Smart Contracts Guide</a></li>
-    <li><a href="koilib.html">Koilib Reference</a></li>
-  </ul>
+    <section>
+      <h2>Pages</h2>
+      <nav>
+        <ul>
+          <li><a href="SmartContracts.html">Smart Contracts Guide</a></li>
+          <li><a href="koilib.html">Koilib Reference</a></li>
+        </ul>
+      </nav>
+    </section>
 
-  <h2>📌 TODO</h2>
-  <p>
-    The Koilib Reference page still needs to include the
-    <a href="https://joticajulian.github.io/koilib/modules/utils.html" target="_blank">
-    koilib utils docs</a>.
-  </p>
+    <section>
+      <h2>TODO</h2>
+      <p>
+        The Koilib Reference page still needs to include the
+        <a href="https://joticajulian.github.io/koilib/modules/utils.html" target="_blank">
+        koilib utils docs</a>.
+      </p>
+    </section>
+  </main>
 
   <footer>
-    <hr>
     <p>Key Koinos Resources:</p>
     <ul>
       <li><a href="https://koinos.io" target="_blank">Official Website</a></li>
