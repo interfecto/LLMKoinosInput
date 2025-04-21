@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koinos Smart Contract Development Guide</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 2em;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 1em;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #1a1a1a;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h1 {
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 0.3em;
+        }
+        h2 {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 0.2em;
+        }
+        code {
+            font-family: monospace;
+            background-color: #eee;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 0.95em;
+        }
+        pre {
+            background-color: #eee;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            font-size: 0.9em;
+        }
+        ul, ol {
+            margin-left: 2em;
+            padding-left: 0;
+        }
+        li {
+            margin-bottom: 0.5em;
+        }
+        strong {
+          font-weight: bold;
+        }
+        blockquote {
+            border-left: 4px solid #ccc;
+            padding-left: 1em;
+            margin-left: 0;
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Koinos Smart Contract Development Guide</h1>
+
+    <h2>Introduction</h2>
+    <p>
+        Koinos is a feeless, upgradeable smart contract platform that uses a WebAssembly (WASM) virtual machine. This guide provides a comprehensive overview of developing smart contracts on Koinos, covering both AssemblyScript (TypeScript for WASM) and C++ development. We will explore the unique Koinos architecture (mana-based resource model and modular upgradeable design), walk through the contract lifecycle (from writing Protobuf definitions and code, to compiling, deploying, and interacting via CLI or wallet), and provide full code examples. The guide also includes details on Koinos-specific concepts (like entry points, system calls, and governance) and a glossary of common terms. All code examples are provided in a copy-paste ready format, with explanations that balance human readability and technical precision.
+    </p>
+
+    <h2>Koinos Architecture</h2>
+    <p>
+        Koinos takes a novel approach to blockchain architecture that differentiates it from EVM-based chains. Understanding these differences is critical:
+    </p>
+
+    <h3>Feeless Mana-Based Execution</h3>
+    <p>
+        Unlike Ethereum’s gas fee model, Koinos has no transaction fees. Instead, it uses a Mana system. Mana is a regenerative resource attached to <code>KOIN</code> tokens, giving users the ability to transact without paying fees. Each <code>KOIN</code> token carries a fixed amount of Mana (1 <code>KOIN</code> at 100% charge provides 1 Mana). When you execute transactions or smart contract calls, you consume a portion of your Mana proportional to the resources used. This Mana automatically recharges over time (up to 20% of total Mana per day, achieving full recharge in 5 days). Because Mana regenerates, users never permanently spend tokens to run contracts – they only need to hold <code>KOIN</code> to gain continuous resource capacity. If Mana is depleted, the user must wait for recharge (or acquire more <code>KOIN</code>) before making further transactions. This approach makes Koinos feeless from the user perspective, significantly lowering barriers to entry and enabling free-to-use dApps. Important points about Mana:
+    </p>
+    <ul>
+        <li><strong>No Gas or Fees:</strong> Contract execution “costs” Mana but not <code>KOIN</code>. The example of uploading a contract showed it cost 0.386 Mana, but spent 0 actual <code>KOIN</code>.</li>
+        <li><strong>Intrinsic to KOIN:</strong> Mana is tied to <code>KOIN</code> holdings. If you transfer <code>KOIN</code>, the Mana goes with it; <code>KOIN</code> cannot be transferred if it’s partially depleted (you must wait until its Mana is full).</li>
+        <li><strong>Regeneration:</strong> Mana recovers over time (20% per day), so users eventually get back the capacity to transact.</li>
+        <li><strong>Resource Credits (RC):</strong> In Koinos, advanced features like RC limits and payer semantics allow one account to cover Mana costs for another or to set usage limits. For example, a dApp developer can sponsor users’ Mana by designating themselves as the payer for a transaction (so the dApp’s Mana is used instead of the user’s). This provides flexibility in how Mana costs are managed, though typical scenarios don’t require users to configure this.</li>
+    </ul>
+    <p>
+        Overall, Mana ensures Koinos smart contracts are accessible without continuous token expenditure, a key differentiator from gas-fee models.
+    </p>
+
+    <h3>Modular, Upgradeable Design (vs. Monolithic Chains)</h3>
+    <p>
+        Koinos is built for modularity and upgradeability. Most blockchain features that are “hard-coded” in other networks (consensus rules, token logic, governance rules, etc.) are implemented as smart contracts on Koinos. There are two types of smart contracts on Koinos:
+    </p>
+    <ul>
+        <li><strong>System Contracts:</strong> These are privileged contracts that provide core blockchain functionality (such as the native <code>KOIN</code> token, resource mana management, governance, etc.). System contracts operate in a special system space allowing them to modify core blockchain state. They can be upgraded via on-chain governance.</li>
+        <li><strong>User Contracts:</strong> These are decentralized application contracts deployed by developers/users. They run in user space (isolated storage) and cannot affect global system state directly. User contracts typically implement dApp logic (tokens, games, etc.) and are owned by the deploying account.</li>
+    </ul>
+    <p>
+        <strong>Forkless Upgrades:</strong> Because core functionality is in system contracts, Koinos can evolve without hard forks. Upgrades to system contracts are proposed on-chain and approved by block producers via a governance process (on-chain voting). Once approved, a new version of a system contract is uploaded, and the change propagates across the network automatically. This means the blockchain can upgrade itself (e.g. change consensus parameters, fix bugs, add features) by consensus, rather than requiring node software updates and chain forks. As a result, governance proposals and voting thresholds (e.g. 75% supermajority for critical changes) determine upgrades, making governance the bottleneck of change instead of code releases.
+    </p>
+    <p>
+        <strong>Upgradeable User Contracts:</strong> Regular smart contracts on Koinos are also upgradeable by design. A smart contract lives at a blockchain address (more on the account model below), and the owner of that address (initially the deployer) can upload new WASM code to it at any time. In other words, contract code is mutable unless intentionally locked. By default, when you deploy a contract, the private key of the deployment address can sign another upload transaction to replace the code at that address. This is a sharp contrast to Ethereum where contract code is immutable once deployed (unless a proxy pattern is used). Koinos does allow truly immutable contracts as well—one can implement a custom permission (via the Authority system call) to refuse further upgrades, effectively “freezing” the code. But if not explicitly locked, upgrading a user contract is as simple as deploying a new WASM to the same address. This flexibility is powerful for developers to fix issues or improve contracts over time, but it also means contract authors have control to change logic, which users should be aware of when interacting with third-party contracts.
+    </p>
+
+    <h3>WASM and Multi-Language Support</h3>
+    <p>
+        Koinos uses a WASM-based virtual machine (specifically, the Fizzy WASM engine) to execute smart contracts. This means any language that can compile to WebAssembly can potentially be used to write Koinos contracts. In practice, Koinos currently provides SDKs for C++ and AssemblyScript (a TypeScript-like language) to write contracts. The blockchain itself is agnostic to the source language – it only sees the compiled WASM. This design contrasts with Ethereum’s EVM, which primarily targets Solidity (or Vyper) and uses an Ethereum-specific bytecode.
+    </p>
+    <p>
+        <strong>AssemblyScript vs C++:</strong> AssemblyScript (AS) is a high-level, developer-friendly option leveraging TypeScript syntax, which lowers the learning curve for JavaScript/TypeScript developers. The majority of new Koinos contracts are written in AssemblyScript. C++ was the first SDK available and offers performance and control, but requires more expertise. Both languages ultimately produce a WASM module that runs in the Koinos VM. You can choose either based on your familiarity and project needs. We will provide examples in both.
+    </p>
+    <p>
+        <strong>System Calls:</strong> In Koinos, contracts interact with the blockchain through system calls (also known as Koinos APIs). These are functions provided by the blockchain runtime for common operations: reading contract arguments, getting the caller or contract ID, reading/writing the contract’s state database, emitting events (logs), verifying signatures, etc. The SDKs wrap these low-level system calls for ease of use (e.g., providing a <code>System</code> class with static methods). For instance, a contract uses <code>System.getArguments()</code> to retrieve its input data, or <code>System.putObject()</code> to write to storage, and <code>System.exit()</code> to return from execution with a success/error code. We'll see these in the code examples. The key point is that Koinos’s core is minimal – almost everything a contract might do is an API call, which in turn is implemented by system contracts or the blockchain microservices. This gives developers a lot of power to integrate with the chain’s features in a straightforward way.
+    </p>
+
+    <h3>Accounts and Addresses Model</h3>
+    <p>
+        On Koinos, accounts and contracts share the same address space – there is no strict separation between “EOA” (externally owned accounts) and contract accounts as in Ethereum. Any address (which is derived from a public key) can have a smart contract uploaded to it. In fact, when you deploy a contract, you are effectively turning a wallet address into a contract. The CLI output below illustrates this:
+    </p>
+    <blockquote>
+        We created a new wallet and uploaded a contract to it. The CLI reported: “Contract uploaded with address 19yp...RQLE. ... This means that the address 19yp...RQLE is the address of the wallet we created earlier, but it is also the address of the contract. Smart contracts are users in Koinos.”
+    </blockquote>
+    <p>
+        In other words, the deployment process doesn’t generate a new address; it uses an existing one. The contract runs under the identity of that address. This model has a few implications:
+    </p>
+    <ul>
+        <li><strong>One Address = One Private Key (optionally with Contract Code):</strong> If you have the private key, you control the address and thus can deploy or upgrade code on it. If an address has no code, it’s a normal user account. If it has code, it’s a contract account (which can still sign transactions if it has a private key, though typically contracts act only when called).</li>
+        <li><strong>Authority and Privileges:</strong> Because contracts may need to restrict who can call certain entry points (or who can upgrade them), Koinos provides an authority system call and a standard interface for custom authorization. By default, when a contract is called, the blockchain checks if the caller is authorized (e.g., for token transfers, the caller must be the token holder or an approved spender). Contracts can implement an <code>authorize()</code> entry point (as part of the Koinos authority standard) to override default authorization logic. For upgrades, by default only the address’s own key can upload new code; if a contract wants to disable upgrades, it could implement a custom <code>authorize</code> that rejects <code>UPLOAD_CONTRACT</code> operations from everyone, including the owner (making it immutable).</li>
+        <li><strong>No Distinction in Transfers:</strong> Any address can hold <code>KOIN</code> tokens or other tokens, whether it’s a user or a contract. For example, a contract can own tokens and act on them, and a user can send tokens to a contract address.</li>
+    </ul>
+    <p>
+        This unified account model is powerful (e.g., you could even have a contract that is also used as a regular account by its owner), but typical usage is to treat accounts as either user-controlled or code-controlled, not both simultaneously.
+    </p>
+
+    <h3>Comparison to EVM Chains</h3>
+    <p>
+        In summary, how Koinos differs from a typical Ethereum-like chain:
+    </p>
+    <ul>
+        <li><strong>Fee Model:</strong> Koinos uses Mana (recharging resource) instead of gas fees. Users don’t lose tokens to fees.</li>
+        <li><strong>Upgradeability:</strong> All Koinos smart contracts (even system-level logic) are upgradeable (via governance for system contracts, via owner re-deployment for user contracts) by default. In Ethereum, core protocol changes need forks, and user smart contracts are immutable once deployed (unless using proxy patterns).</li>
+        <li><strong>Language and VM:</strong> Koinos runs WASM, allowing developers to use languages like C++ and AssemblyScript. Ethereum’s EVM is a bespoke VM mainly used via Solidity. WASM also means more consistency with web standards and potential for broader language support.</li>
+        <li><strong>Accounts:</strong> No separate contract vs EOA distinction – any address can be a contract.</li>
+        <li><strong>Governance:</strong> On-chain governance is built-in to Koinos for protocol upgrades (the blockchain is effectively a DAO controlling its own evolution). Ethereum has off-chain governance for changes (social coordination for forks and EIPs).</li>
+        <li><strong>Consensus:</strong> Koinos uses a unique Proof-of-Burn consensus (block producers compete by provably burning KOIN), which is implemented as a system contract. While not directly relevant to contract development, it’s another example of a modular feature. Ethereum currently uses Proof-of-Stake with external validators.</li>
+    </ul>
+    <p>
+        With these fundamentals in mind, let’s move on to actually building and deploying contracts on Koinos.
+    </p>
+
+    <h2>Smart Contract Development Lifecycle</h2>
+    <p>
+        Developing a Koinos smart contract involves several steps. We’ll outline the typical workflow and then delve into specifics for AssemblyScript and C++:
+    </p>
+    <ol>
+        <li><strong>Set Up Environment & Tools</strong> – Install the SDK (AssemblyScript SDK or C++ SDK), Koinos CLI, and any prerequisites (e.g., Node.js, Protocol Buffers compiler, etc.).</li>
+        <li><strong>Define Contract Interface (ABI)</strong> – Specify your contract’s entry points (functions), arguments, and return types using Protocol Buffers (Protobuf) definitions. This will be used to generate the contract’s ABI (Application Binary Interface) and data classes.</li>
+        <li><strong>Implement Contract Logic</strong> – Write the smart contract code (in AssemblyScript <code>.ts</code> or C++ <code>.cpp</code>) using the SDK, implementing the desired behaviors for each entry point.</li>
+        <li><strong>Compile and Build</strong> – Compile the code to WebAssembly and generate the ABI file. The output will include a <code>.wasm</code> file (the contract bytecode) and an <code>.abi</code> JSON file (or binary <code>.abi</code>) describing the contract’s interface for clients.</li>
+        <li><strong>Deploy (Upload) Contract</strong> – Use Koinos CLI or a library (Koilib) to upload the WASM to the blockchain. This associates the compiled contract with an address (usually the developer’s address or a new address).</li>
+        <li><strong>Register the ABI (for CLI usage or wallets)</strong> – Tell client tools about the contract’s ABI so they know how to format calls. In Koinos CLI, for example, you register the contract’s address and ABI file to be able to call its functions by name.</li>
+        <li><strong>Interact with the Contract</strong> – Call the contract’s entry points using CLI commands, via a wallet like Kondor, or programmatically using libraries (Koilib). You can perform read-only calls (which do not consume Mana or create a transaction) or state-changing calls (which create a transaction that uses Mana).</li>
+        <li><strong>Upgrade (if needed)</strong> – Repeat steps 3–5 to upload a new version of the contract code to the same address (if you want to change functionality). If the contract is system-critical or you want formal governance for changes, consider using the governance mechanism or authority restrictions appropriately.</li>
+    </ol>
+    <p>
+        We will now go through these steps with more detail, including actual examples in AssemblyScript and C++.
+    </p>
+
+    <h2>Setting Up Development Environment</h2>
+
+    <h3>AssemblyScript SDK Setup</h3>
+    <p>
+        The official Koinos AssemblyScript SDK (<code>koinos-sdk-as</code>) requires Node.js (v16+). You can install it via npm or yarn:
+    </p>
+<pre><code class="language-bash"># Install the Koinos AS SDK as a dependency in your project
+npm install koinos-sdk-as   # or: yarn add koinos-sdk-as
+</code></pre>
+    <p>
+        Additionally, install the Koinos AssemblyScript CLI tool <code>koinos-sdk-as-cli</code> (which comes with the SDK package). This CLI helps bootstrap projects and generate necessary files. Ensure you have Protocol Buffers (<code>protoc</code>) installed as well, since the SDK uses it to generate code from <code>.proto</code> definitions.
+    </p>
+
+    <h3>C++ SDK Setup</h3>
+    <p>
+        The Koinos C++ SDK (<code>koinos-sdk-cpp</code>) requires a WebAssembly cross-compilation setup. You’ll need to download the WASI SDK (WebAssembly System Interface SDK) release for your platform (e.g., <code>wasi-sdk</code> 12.0) and set an environment variable <code>KOINOS_WASI_SDK_ROOT</code> to its path. Also set <code>KOINOS_SDK_ROOT</code> to the directory where you want to install the Koinos SDK. Then build the Koinos C++ SDK from source:
+    </p>
+<pre><code class="language-bash">git clone https://github.com/koinos/koinos-sdk-cpp.git
+cd koinos-sdk-cpp
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$KOINOS_SDK_ROOT ..
+make -j install
+</code></pre>
+    <p>
+        This installs libraries for C and C++ system call interfaces (e.g., <code>koinos_api_cpp</code>) and a CMake toolchain file for building contracts. To create your own C++ contract project, you will use this toolchain in your CMake configuration. Make sure to link against the Koinos SDK libraries (<code>koinos_api</code>, <code>koinos_api_cpp</code>, <code>koinos_wasi_api</code>, etc.) as indicated in the SDK docs.
+    </p>
+
+    <h3>Koinos CLI</h3>
+    <p>
+        Install the Koinos CLI tool (often just called <code>koinos-cli</code>). This might be available via npm (as part of koilib tools) or as a standalone binary. For example, if using npm:
+    </p>
+<pre><code class="language-bash">npm install -g @koinos/cli
+</code></pre>
+    <p>
+        The CLI is essential for creating wallets, connecting to a node (local or testnet), and issuing commands to deploy and call contracts.
+    </p>
+
+    <h3>Kondor Wallet (for Browser)</h3>
+    <p>
+        If you plan to interact with contracts via a web application, set up Kondor, the Koinos browser wallet (a Chrome/Brave extension). Kondor manages your keys and can approve transactions initiated from web apps. It works with the Koilib JavaScript library to enable DApp integration. (We’ll cover usage later in the interaction section.)
+    </p>
+
+    <h3>Local Node or Testnet</h3>
+    <p>
+        For development, you can use the Harbinger testnet (Koinos public test network) or run a local Koinos node. The easiest way to get a local blockchain is using the <code>local-koinos</code> Docker setup, but for most contract testing, the public testnet is convenient. Ensure you have some test <code>KOIN</code> (tKOIN) – the Learn Koinos tutorials show how to use a faucet.
+    </p>
+    <p>
+        With the tools ready, let’s create a contract.
+    </p>
+
+    <h2>Writing the Contract Interface (Protobuf ABI Definition)</h2>
+    <p>
+        Koinos uses Protocol Buffers to define the data structures for contract arguments and return values. This <code>.proto</code> definition is the source of truth for your contract’s interface, and the SDK will use it to generate the ABI.
+    </p>
+    <p>
+        For each entry point (function) your contract exposes, you typically define two messages in the proto file: <code>{function}_arguments</code> and <code>{function}_result</code>. For example, imagine a simple Calculator contract with entry points <code>add</code>, <code>sub</code>, <code>mul</code>, <code>div</code> each taking two 64-bit integers and returning a 64-bit integer result. The <code>calculator.proto</code> might look like:
+    </p>
+<pre><code class="language-protobuf">syntax = "proto3";
+package calculator;
+
+// Arguments for each entry point:
+message add_arguments { int64 x = 1; int64 y = 2; }
+message add_result    { int64 value = 1; }
+
+message sub_arguments { int64 x = 1; int64 y = 2; }
+message sub_result    { int64 value = 1; }
+
+message mul_arguments { int64 x = 1; int64 y = 2; }
+message mul_result    { int64 value = 1; }
+
+message div_arguments { int64 x = 1; int64 y = 2; }
+message div_result    { int64 value = 1; }
+</code></pre>
+    <p>
+        This defines the input and output of each function. By convention, we use <code>{name}_arguments</code> and <code>{name}_result</code> in Protobuf. If a function takes no arguments, you can define an empty message (or omit it and use a generic empty placeholder). If a function returns nothing, you might still define a result message for consistency (or use an empty result).
+    </p>
+    <p>
+        For a simpler example, consider a HelloWorld contract with one function <code>hello</code> that takes a string and returns a greeting string:
+    </p>
+<pre><code class="language-protobuf">syntax = "proto3";
+package myapp.hello;
+
+message hello_arguments { string name = 1; }
+message hello_result    { string greeting = 1; }
+</code></pre>
+    <p>
+        Once you create the <code>.proto</code> file, the AssemblyScript CLI can generate TypeScript classes for these messages and also scaffold boilerplate contract code. In an AssemblyScript project, ensure the proto file is placed in the <code>assembly/proto/</code> directory of your project (e.g., <code>assembly/proto/hello.proto</code>). Then run:
+    </p>
+<pre><code class="language-bash"># Generate AssemblyScript types from the proto
+yarn exec koinos-sdk-as-cli generate-contract-proto   # inside the project folder
+</code></pre>
+    <p>
+        This uses <code>protoc</code> with the AssemblyScript plugin to create TS classes (e.g., <code>hello_arguments</code> and <code>hello_result</code> classes in the <code>assembly/</code> directory). It will also generate an initial <code>index.ts</code> and a <code>&lt;ContractName&gt;.boilerplate.ts</code> if you run <code>generate-contract-as</code>. The boilerplate contains the structure of the contract's dispatch (mapping entry point identifiers to your functions).
+    </p>
+    <p>
+        The entry point identifiers are worth noting: Koinos doesn’t natively use human-readable function names on-chain. Instead, each entry point is identified by a 32-bit integer (typically derived from a hash of the function name for uniqueness). The ABI will map the human name to this number. For instance, in the generated ABI JSON for the KOIN token contract, the <code>transfer</code> method is listed with an entry point <code>0x62efa292</code>. You usually don’t worry about these IDs, as the SDK and CLI handle them (the CLI, after registering the ABI, lets you call by name, and under the hood it uses the entry point ID). Just be aware that in logs or low-level interfaces, you might see entry point numbers instead of names.
+    </p>
+    <p>
+        In the AssemblyScript SDK, the boilerplate will typically create a <code>switch</code> statement in <code>index.ts</code> that checks <code>contractArgs.entry_point</code> against these hex IDs and dispatches to the appropriate function, as shown later in our example.
+    </p>
+
+    <h2>Implementing Contract Logic (AssemblyScript)</h2>
+    <p>
+        Now you write the actual logic of your contract – i.e., what each entry point function does. With AssemblyScript, you will create a class that represents your contract, implement methods corresponding to each entry point, and possibly use the Koinos SDK’s system call wrappers for state storage or other blockchain interactions.
+    </p>
+    <p>
+        Let’s continue with the HelloWorld example in AssemblyScript. We’ve defined the proto with <code>hello_arguments</code> and <code>hello_result</code>. We will implement a contract that when called with a name, returns "Hello, &lt;name&gt;!".
+    </p>
+    <p><strong>AssemblyScript Contract Example:</strong></p>
+<pre><code class="language-typescript">// File: assembly/HelloWorld.ts
+import { System, Protobuf, StringBytes } from "@koinos/sdk-as";
+import { hello as ProtoNS } from "./proto/hello";  // Import the proto namespace/types
+
+export class HelloWorld {
+  // The hello function implementation
+  hello(args: ProtoNS.hello_arguments): ProtoNS.hello_result {
+    const name = args.name;
+    // Construct the greeting
+    const greetingMsg = `Hello, ${name}!`;
+    // Prepare result object
+    const res = new ProtoNS.hello_result();
+    res.greeting = greetingMsg;
+    return res;
+  }
+}
+</code></pre>
+    <p>A few notes on the code above:</p>
+    <ul>
+        <li>We import <code>System</code> and <code>Protobuf</code> from the SDK. <code>System</code> provides system calls (like logging, storage, etc.), and <code>Protobuf</code> provides encode/decode functions if needed (but the SDK also offers generated encode/decode on the classes).</li>
+        <li>We also import <code>StringBytes</code> which can help with string&lt;-&gt;Uint8Array conversion if needed (not used in this simple example).</li>
+        <li>The <code>hello</code> method takes a <code>hello_arguments</code> object and returns a <code>hello_result</code> object. These classes were generated from our proto and contain the fields we defined.</li>
+        <li>We simply form a string and set it as the result’s <code>greeting</code>.</li>
+    </ul>
+    <p>The AssemblyScript SDK also allows using system calls for persistent storage or events:</p>
+    <ul>
+        <li><strong>State Storage:</strong> Each contract has a key-value store (its object space) for persistent data. For example, if our contract needed to store a counter, we could use <code>System.putObject(object_space, key, valueBytes)</code> and <code>System.getObject(object_space, key)</code> to write/read. The <code>object_space</code> for user contracts is typically defined with <code>system=false</code> and <code>zone = contract’s address bytes</code>. The SDK likely provides a simplified API, but underlying it uses those calls. In AssemblyScript, to store a string or number, you would convert it to <code>Uint8Array</code> (bytes) and use <code>System.putObject</code>. For example:</li>
+    </ul>
+<pre><code class="language-typescript">const space = new System.ObjectSpace(false, this.contractId, 0); // id=0 for primary space
+System.putBytes(space, StringBytes.stringToBytes("greeting"), StringBytes.stringToBytes(greetingMsg));
+</code></pre>
+    <p>This would store the greeting under key "greeting".</p>
+    <ul>
+        <li><strong>Events/Logs:</strong> You can emit events by writing to the event log. In Koinos, an event is just a record with your contract ID, an event name, and some data. The SDK might provide <code>System.event</code> or similar. Alternatively, you can use <code>System.log(message)</code> for a basic textual log (which appears in transaction receipt logs). For structured events, typically you’d define an event protobuf message and call <code>System.event</code> with the encoded data and perhaps an event name. (For brevity we won’t delve into event specifics here.)</li>
+    </ul>
+    <p>After writing the contract logic, we need to tie it into the dispatch mechanism. The SDK’s <code>generate-contract-as</code> command often produces an <code>index.ts</code> that looks like this:</p>
+<pre><code class="language-typescript">import { System, Protobuf } from "@koinos/sdk-as";
+import { HelloWorld as ContractClass } from "./HelloWorld";
+import { hello as ProtoNS } from "./proto/hello";
+
+export function main(): i32 {
+  const contractArgs = System.getArguments(); // get entry point and args buffer
+  const c = new ContractClass();
+  let retBuf = new Uint8Array(0);
+
+  switch (contractArgs.entry_point) {
+    case 0x6d4ce63c: {  // some 32-bit ID for "hello"
+      const args = Protobuf.decode&lt;ProtoNS.hello_arguments&gt;(
+        contractArgs.args, ProtoNS.hello_arguments.decode
+      );
+      const res = c.hello(args);
+      retBuf = Protobuf.encode(res, ProtoNS.hello_result.encode);
+      break;
+    }
+    default: {
+      System.exit(1); // unknown entry point, error
+      break;
+    }
+  }
+
+  System.exit(0, retBuf);
+  return 0;
+}
+main();
+</code></pre>
+    <p>
+        This is an illustrative snippet based on typical boilerplate (the actual entry point hex will differ). It obtains the raw arguments, dispatches to the correct method of our <code>HelloWorld</code> class, encodes the result, and uses <code>System.exit(0, retBuf)</code> to return successfully with that result. <code>System.exit(code, buffer)</code> is how a contract ends execution: exit code 0 means success (and the buffer is returned as the result), while a non-zero code indicates an error which will revert any state changes done by the contract. In our case, if an unknown function ID is called, we exit with 1 (causing the call to fail). If we wanted to enforce any runtime checks (e.g., division by zero in a calculator) we could similarly call <code>System.exit( &lt;non-zero&gt; )</code> to abort.
+    </p>
+    <p>
+        <strong>Note:</strong> You usually don’t need to manually write the <code>main()</code> and dispatch switch for AssemblyScript; the CLI generator handles it. But it’s important to understand it, especially if debugging or writing in C++ (where you will write a similar dispatch logic yourself).
+    </p>
+    <p>After implementing the contract, run the build:</p>
+<pre><code class="language-bash"># Compile the contract to WASM and generate ABI
+# (Make sure to execute inside the project directory)
+koinos-sdk-as-cli build-all release hello.proto
+</code></pre>
+    <p>This single command will:</p>
+    <ul>
+        <li>Compile your AssemblyScript code to a WASM module (in <code>build/release/contract.wasm</code>).</li>
+        <li>Generate the <code>.abi</code> file (Application Binary Interface) in the <code>abi/</code> folder, as well as a human-readable JSON representation of the ABI.</li>
+        <li>Ensure the <code>index.ts</code> and boilerplate are up-to-date.</li>
+    </ul>
+    <p>The output of a successful build includes files:</p>
+    <ul>
+        <li><code>contract.wasm</code> (the compiled contract bytecode)</li>
+        <li><code>hello.abi</code> (binary ABI description)</li>
+        <li><code>hello-abi.json</code> (JSON ABI)</li>
+        <li>(Plus any intermediate files like the generated TS from proto, which we saw in the <code>assembly</code> folder).</li>
+    </ul>
+    <p>You now have everything needed to deploy and use the contract.</p>
+
+    <h2>Implementing Contract Logic (C++)</h2>
+    <p>
+        If you choose to develop in C++, the overall flow is similar: define proto messages for your interface (you can use the same <code>.proto</code> and use a C++ Protobuf compiler to generate C++ classes, or manually define serialization). The Koinos C++ SDK does not auto-generate a dispatch for you; you will write a <code>main()</code> function that uses the Koinos system call C/C++ API to read the entry point, decode arguments, and encode results.
+    </p>
+    <p>
+        Let’s create the same HelloWorld contract in C++ for illustration. We’ll use Protobuf as well, assuming you have the C++ classes generated for <code>hello_arguments</code> and <code>hello_result</code> (from the <code>.proto</code> earlier). The Koinos C++ SDK provides functions to get the call arguments and to exit.
+    </p>
+    <p><strong>C++ Contract Example:</strong></p>
+<pre><code class="language-cpp">// File: hello.cpp
+#include &lt;koinos/chain/system_calls.hpp&gt;   // Koinos system call interface
+#include "hello.pb.h"    // Generated by protoc from hello.proto (contains hello::hello_arguments, hello::hello_result)
+
+using namespace koinos::chain;  // contains System calls like get_arguments, exit
+
+extern "C" __attribute__((visibility("default"))) int main() {
+  // Retrieve contract call arguments (entry point and payload)
+  auto args_ptr = get_arguments();  // returns pointer to args in memory
+  size_t args_size = get_arguments_size();
+  std::string args_bytes(args_size, '\0');
+  chain::read_buffer(args_ptr, args_bytes.data(), args_size);
+  uint32_t entry = get_entry_point();  // entry point ID of the call
+
+  std::string ret; // buffer for return data
+  int32_t exit_code = 0;
+
+  if (entry == 0x6d4ce63c) {  // suppose this is the ID for "hello"
+    // Decode arguments from bytes into a hello_arguments object
+    hello::hello_arguments arg_obj;
+    if (!arg_obj.ParseFromString(args_bytes)) {
+      exit(1); // parsing error
+    }
+    std::string name = arg_obj.name();
+
+    // Business logic: create greeting
+    std::string greeting = "Hello, " + name + "!";
+
+    // Encode result
+    hello::hello_result res_obj;
+    res_obj.set_greeting(greeting);
+    res_obj.SerializeToString(&ret);
+    exit_code = 0;
+  } else {
+    // Unknown entry point
+    exit_code = 1;
+  }
+
+  if (exit_code == 0) {
+    exit(0, ret.data(), ret.size());  // exit with success and return buffer
+  } else {
+    exit(exit_code);
+  }
+  return 0;
+}
+</code></pre>
+    <p>
+        <strong>Explanation:</strong> This C++ code uses pseudo-APIs similar to those provided by the Koinos SDK:
+    </p>
+    <ul>
+        <li><code>get_entry_point()</code> and <code>get_arguments()</code> are system calls to retrieve the entry point ID and argument pointer. (In reality, the Koinos SDK might provide a single call that returns both in a struct, but for clarity we do them separately).</li>
+        <li>We assume <code>hello.pb.h</code> defines classes from the proto (using the Google Protobuf library). We parse the incoming args into <code>hello_arguments</code> and then construct <code>hello_result</code>.</li>
+        <li>We call <code>exit(code, buf, size)</code> to return from the contract. The <code>exit</code> system call in C++ can be overloaded: <code>exit(code)</code> with no buffer, or <code>exit(code, data_ptr, data_size)</code> to return data.</li>
+    </ul>
+    <p>
+        The C++ SDK actually offers some conveniences (like a <code>koinos::chain::protobuf</code> namespace to help with serialization, and maybe a wrapper for reading arguments in one go). But the above demonstrates the core of it. You would compile this C++ code with CMake, using the Koinos WASM toolchain:
+    </p>
+    <p><strong>CMakeLists snippet:</strong></p>
+<pre><code class="language-cmake">project(hello_contract)
+
+find_package(koinos.cdt)  # find the Koinos Contract Development Toolkit
+
+add_executable(hello.wasm hello.cpp)
+
+target_link_libraries(hello.wasm koinos_api_cpp koinos_api)  # link Koinos SDK libs
+</code></pre>
+    <p>Then run cmake with the toolchain:</p>
+<pre><code class="language-bash">cmake -DCMAKE_TOOLCHAIN_FILE=$KOINOS_SDK_ROOT/cmake/koinos-wasm-toolchain.cmake \
+      -DCMAKE_BUILD_TYPE=Release .
+make
+</code></pre>
+    <p>
+        This should produce <code>hello.wasm</code>. You would also have to produce a matching ABI file. Currently, the AssemblyScript SDK provides tools to generate the ABI JSON from the proto. For C++, you might manually create the ABI JSON or use the AssemblyScript CLI just to generate the <code>.abi</code> from your proto (since ABI is language-agnostic). The ABI JSON for our hello contract would look like:
+    </p>
+<pre><code class="language-json">{
+  "methods": {
+    "hello": {
+      "argument": "myapp.hello.hello_arguments",
+      "return":   "myapp.hello.hello_result",
+      "entry_point": "0x6d4ce63c",
+      "description": "Returns a greeting for the given name",
+      "read_only": true
+    }
+  },
+  "types": "&lt;base64 protobuf descriptors&gt;"
+}
+</code></pre>
+    <p>
+        This is similar to the example in the docs (for the KOIN token contract) but simplified to one method. The "types" field is a base64 encoding of the proto descriptor, allowing clients to decode/encode data without the original <code>.proto</code> file.
+    </p>
+
+    <h2>Compiling and Building (Summary)</h2>
+    <p>
+        At this stage, regardless of language, you have a compiled <code>contract.wasm</code> and an ABI file describing the contract interface. Summarizing:
+    </p>
+    <ul>
+        <li><strong>AssemblyScript:</strong> use <code>koinos-sdk-as-cli build-all release &lt;your.proto&gt;</code> to compile and get artifacts.</li>
+        <li><strong>C++:</strong> use <code>cmake/make</code> to compile to WASM, and ensure you prepare the ABI (possibly using a script or the AssemblyScript tool for ABI generation from the same proto).</li>
+    </ul>
+    <p>
+        Now we are ready to deploy the contract to a Koinos blockchain (testnet or mainnet).
+    </p>
+
+    <h2>Contract Deployment and Interaction</h2>
+
+    <h3>Deploying (Uploading) the Contract</h3>
+    <p>
+        Deploying a Koinos contract is often referred to as uploading the contract. You will need:
+    </p>
+    <ul>
+        <li>A Koinos wallet address (with sufficient Mana available).</li>
+        <li>The compiled <code>.wasm</code> file.</li>
+        <li>(Optionally) the <code>.abi</code> file for registering the interface in clients.</li>
+    </ul>
+    <p>
+        Using Koinos CLI is straightforward:
+    </p>
+    <ol>
+        <li>Open your wallet in the CLI and connect to a node:</li>
+    </ol>
+<pre><code class="language-bash">$ koinos-cli
+> open wallet.mywallet mypassword   # opens a local wallet file
+Opened wallet: wallet.mywallet
+> connect https://api.koinos.io    # connect to mainnet (or a testnet endpoint)
+Connected to endpoint https://api.koinos.io
+</code></pre>
+    <p>Now the CLI is using your wallet (your address is “unlocked” for signing) and is connected to the blockchain.</p>
+    <ol start="2">
+      <li>Upload the WASM:</li>
+    </ol>
+<pre><code class="language-bash">> upload build/release/contract.wasm
+Contract uploaded with address 19yp497RPiuWwsNUWp9cHWfbWUupHsRQLE
+Transaction with ID 0x12209604... submitted.
+Mana cost: 0.38643078 (Disk: 16472, Network: 17562, Compute: 177948)
+</code></pre>
+    <p>
+        As seen above, the CLI output confirms the contract was uploaded to address <code>19yp...RQLE</code>, which is actually the address of the currently open wallet. The CLI explicitly notes: “The contract id will be the public address of the currently open wallet.” In this example, our wallet’s address was used as the contract’s address. The transaction ID and Mana cost are displayed (no KOIN burned, just Mana consumed).
+    </p>
+    <p>
+        If you wanted to deploy to a new address (so your user wallet is not the contract owner), you would create a new wallet, open it, and fund it with some Mana (KOIN) or use a payer account. The Koilib library example shows how you can deploy a contract to a new address by setting a different payer for the transaction.
+    </p>
+    <p>
+        The CLI <code>upload</code> command only needs the WASM file; it does not take the ABI file as input, because the ABI is not stored on-chain – it’s for off-chain usage. The blockchain now has your code stored and associated with that address.
+    </p>
+    <p>
+        <strong>(Optional) Verify Deployment:</strong> You can check a block explorer (like KoinosBlocks for mainnet or its testnet counterpart) and search the contract address or transaction ID to ensure it was included. On KoinosBlocks, a contract address page will show the contract’s registered read-only methods if it recognizes an ABI, otherwise just the raw calls.
+    </p>
+    <p>
+        <strong>Understanding Addresses and Ownership:</strong> As mentioned, the deploying address becomes the contract’s address. That address is now both an identifier for the contract and still a wallet with a private key (yours). By default, only your key is authorized to upload (update) code on that address. If someone else tries to upload a contract to your address, the system’s authorization checks will reject it. Similarly, your contract can call <code>System.getCaller()</code> in an authorize function to ensure only you (the owner) can perform certain privileged actions within the contract.
+    </p>
+    <p>
+        One more detail: The Koinos block size currently limits contract WASM size to 200 KB. If your contract exceeds that, you might need to split logic into multiple contracts.
+    </p>
+    <p>
+        Now that the contract is deployed, the next step is to make its functionality available to users (or to yourself) via the ABI.
+    </p>
+
+    <h3>ABI Registration and CLI Commands</h3>
+    <p>
+        After uploading, if you want to interact via the Koinos CLI with human-friendly commands, register the contract’s ABI:
+    </p>
+<pre><code class="language-bash">> register hello 19yp497RPiuWwsNUWp9cHWfbWUupHsRQLE abi/hello.abi
+Contract 'hello' at address 19yp497RPiuWwsNUWp9cHWfbWUupHsRQLE registered
+</code></pre>
+    <p>
+        The format is <code>register &lt;alias&gt; &lt;contract_address&gt; &lt;path_to_abi_file&gt;</code>. We chose alias "hello" for convenience. Now the CLI knows that alias corresponds to that address and has the definitions of its methods. It will add new commands to the CLI for each entry point:
+    </p>
+<pre><code class="language-bash">> list
+...
+hello.hello   - Returns a greeting for the given name
+...
+</code></pre>
+    <p>The CLI pulled the method description from the ABI. We can use <code>help</code> on any method:</p>
+<pre><code class="language-bash">> help hello.hello
+Returns a greeting for the given name
+Usage: hello.hello &lt;name:string&gt;
+</code></pre>
+    <p>And we can finally call the contract:</p>
+<pre><code class="language-bash">> hello.hello Koinos
+value: "Hello, Koinos!"
+</code></pre>
+    <p>
+        The CLI recognized that <code>hello.hello</code> is read-only (since we marked it <code>read_only: true</code> in ABI), so it executed it as a read-only call and immediately returned the result without creating a transaction. The output shows the return value. If this were a state-changing call, CLI would instead show a “Calling ... submitted transaction” message.
+    </p>
+    <p>
+        To illustrate a state-changing example, suppose we had a token contract with a <code>transfer</code> function. After ABI registration (e.g., alias "koin"), you could do:
+    </p>
+<pre><code class="language-bash">> koin.transfer &lt;from_addr&gt; &lt;to_addr&gt; &lt;value&gt;
+Calling koin.transfer with arguments 'from:"&lt;addr1&gt;" to:"&lt;addr2&gt;" value:100000000'
+Submitted transaction with id 0x1220efc0...
+</code></pre>
+    <p>
+        The CLI would wait for the transaction to be mined, or you can query the effect (like checking balances). In the snippet above, a subsequent <code>koin.balance_of &lt;addr2&gt;</code> returned the updated balance.
+    </p>
+
+    <h3>Interacting via Kondor (Wallet Integration)</h3>
+    <p>
+        While the CLI is great for testing and development, end-users will typically interact with contracts through a web interface or wallet. Kondor is the main wallet for Koinos. It allows users to:
+    </p>
+    <ul>
+        <li>Manage addresses and keys.</li>
+        <li>See token balances and NFTs.</li>
+        <li>Sign transactions for contract calls initiated by web apps (similar to MetaMask’s function for Ethereum dApps).</li>
+    </ul>
+    <p>
+        If you build a web DApp that uses your Koinos contract, you can use the Koilib JavaScript library to integrate with Kondor. Koilib can connect to Kondor by using Kondor’s injected provider. For example, Koilib can create a <code>Provider</code> that connects to a node (e.g., public RPC) and a <code>Signer</code> that uses Kondor’s signing capability.
+    </p>
+    <p>Basic flow for a web app:</p>
+    <ul>
+        <li>The user installs Kondor and unlocks it.</li>
+        <li>Your web app (JS) detects Kondor (e.g., <code>window.kondor</code> might be present).</li>
+        <li>Using Koilib, you can do:</li>
+    </ul>
+<pre><code class="language-javascript">import { Provider, Signer, Contract } from 'koilib';
+
+const provider = new Provider([ "https://api.koinos.io" ]);  // RPC node
+
+// Signer to use Kondor:
+const signer = Signer.fromKondor(); // (this is conceptual; Koilib docs detail how to tie into Kondor's API)
+signer.provider = provider;
+
+const contract = new Contract({
+  id: "19yp497RPiuWwsNUWp9cHWfbWUupHsRQLE", // contract address
+  abi: helloABI,  // JSON ABI for the contract
+  provider, signer
+});
+
+const { result } = await contract.functions.hello({ name: "Koinos" });
+console.log(result.greeting); // Should output "Hello, Koinos!"
+</code></pre>
+    <ul>
+        <li>When a state-changing function is called via <code>contract.functions.xxx</code>, Koilib will craft a transaction and ask Kondor to sign it (the user will see a prompt to approve the transaction). For read-only calls, Koilib will just execute a local call (no approval needed).</li>
+        <li>Kondor, upon user approval, signs the transaction and optionally broadcasts it (Koilib can also handle the broadcast to the node).</li>
+        <li>The app can then wait for the transaction to be mined and update UI accordingly.</li>
+    </ul>
+    <p>
+        Kondor essentially acts as the key store and signer. It uses Koilib under the hood as well (the Kondor extension itself runs on Koilib). For more complex integrations, developers can refer to Kondor’s documentation or Koilib’s guide on using browser extensions.
+    </p>
+
+    <h3>Upgrading and Versioning Contracts</h3>
+    <p>
+        If you need to upgrade your contract, the process is simply to compile the new version to WASM and use the CLI (or Koilib) to upload it again with the same account (address). The upload command will replace the code at that address (only allowed if you control the address). The state data (stored in the contract’s object space) remains intact across upgrades, which is extremely powerful – you can deploy a fix without losing stored data, essentially performing what would be a “migration” in other blockchains seamlessly. The ABI may need updating if you changed function signatures or added/removed entry points – you’d distribute the new ABI to users/clients (and update any ABI registrations in CLI or config files).
+    </p>
+    <p>
+        You should also bump version numbers within your own code for clarity, and possibly emit an event on upgrade so off-chain services know a new version is live.
+    </p>
+    <p>
+        If a contract is meant to be immutable (e.g., a governance or trust-critical contract with no owner control), consider implementing the Koinos Authority contract interface to refuse future uploads. There is an “Immutable” contract example in the Koinos docs showing how to do that by overriding the authorize system call so that any operation of type <code>UPLOAD_CONTRACT</code> is denied unless certain conditions are met (or denied unconditionally).
+    </p>
+    <p>
+        System contracts upgrades are done via governance proposals as discussed – beyond the scope of this guide, but in essence a proposal transaction contains the new WASM and when approved by block producers, the network automatically replaces the old system contract with the new one, in a forkless manner.
+    </p>
+
+    <h3>Read/Write Flows and Error Handling</h3>
+    <p>
+        To solidify understanding, let’s describe typical read and write flows in a contract call and how errors are handled:
+    </p>
+    <ul>
+        <li><strong>Read-Only Call Flow:</strong> A user (or dApp) calls a contract entry point marked as <code>read_only</code> in the ABI. Tools like CLI or Koilib recognize this and execute a local query: the node will run the contract’s code in a sandbox without creating a transaction. The contract can read its state and return a result, but any attempted state modifications are ignored or cause an error. Because no blockchain state changes, no Mana is consumed for read-only calls. For example, querying an ERC20-style balance (<code>balance_of</code>) is read-only; CLI returns the balance immediately.</li>
+        <li><strong>State-Changing Call Flow:</strong> A user calls a non-read-only entry point (e.g., <code>transfer</code>). This requires a transaction. The steps are: form the transaction with the contract address, entry point ID, and encoded argument data; sign it with the user’s key (or payer’s key); broadcast to network; miners execute the contract code as part of block production, and if <code>System.exit(0, result)</code> is called, the transaction is successful (state changes are applied), otherwise it’s reverted. The user spends Mana equal to the resources consumed (and possibly payer’s Mana if one is set). In our CLI token transfer example, after submission, we waited and then checked the updated balance to confirm the state change.</li>
+        <li><strong>Error Handling:</strong> Within contract code, error conditions should result in a nonzero exit code to signal failure. For instance, if our Calculator contract’s <code>div</code> function is called with <code>y = 0</code>, we want to abort. In AssemblyScript, we could do:</li>
+    </ul>
+<pre><code class="language-typescript">if (args.y == 0) {
+  System.exit(1); // exit with error code 1 (generic failure)
+}
+</code></pre>
+    <p>
+        When <code>System.exit(1)</code> is called, the contract execution stops immediately and the state changes (if any were made before the exit) are rolled back – effectively the whole operation is reverted. The caller will get an error (the CLI might show "error: returned non-zero exit code" or similar). We can use different exit codes if we want to represent different error types, but usually 1 is enough to indicate a failure (the specific code isn’t widely used by client apps except as nonzero = failure).
+    </p>
+    <p>
+        Because Koinos doesn’t currently support returning rich error messages directly (there’s no native concept of revert strings like Ethereum), a common pattern is to return an error code or boolean in the result message. For example, a token <code>transfer_result</code> might have a <code>bool success</code> field, or an <code>error_code</code> field. However, if a contract returns an error result normally (<code>exit(0)</code> with an error code in the data), that doesn’t revert state – it’s like an application-level error. Use <code>System.exit( )</code> with nonzero to truly revert. It’s up to the contract developer to choose which approach in each situation. The Authority and Immutable examples in the official docs show usage of <code>System.exit</code> for controlling logic flow.
+    </p>
+
+    <h3>Using System Contracts (as a developer)</h3>
+    <p>
+        One additional aspect: as a contract developer on Koinos, you might sometimes call into system contracts or utilize their functionality. For example, instead of writing your own token contract from scratch, you might choose to import the Koinos Tokens standard (KRC) system contract API. Koinos system contracts (like the Koinos standard token contract, NFT contract, etc.) expose entry points themselves that you can invoke from your contract via an inter-contract call (using a system call to call another contract’s entry point). The details of inter-contract calls involve packing arguments and using <code>System.callContract</code> or similar. While that’s beyond this intro, be aware that everything is a contract includes the possibility that your contract can call system-level services (like checking an account’s Mana, invoking the KOIN token’s transfer on behalf of a user, etc.) if it has the privilege or proper authorization to do so.
+    </p>
+
+    <h2>Example: Putting It All Together</h2>
+    <p>
+        Let’s walk through a quick practical example combining many of the above steps, using the AssemblyScript SDK as it’s most accessible:
+    </p>
+    <p>Suppose we want to create a simple Counter contract. It has two entry points:</p>
+    <ul>
+        <li><code>increment</code>: increments an internal counter by a given amount (or by 1 if no amount given) and returns the new value.</li>
+        <li><code>get_count</code>: a read-only call that returns the current counter value.</li>
+    </ul>
+    <ol>
+        <li><strong>Define Proto (<code>counter.proto</code>):</strong></li>
+<pre><code class="language-protobuf">syntax = "proto3";
+package myapp.counter;
+
+message increment_arguments { uint32 amount = 1; }
+message increment_result { uint32 new_value = 1; }
+
+message get_count_arguments {}        // no fields, just an empty message
+message get_count_result { uint32 value = 1; }
+</code></pre>
+        <li><strong>Generate types and boilerplate:</strong></li>
+<pre><code class="language-bash">koinos-sdk-as-cli generate-contract-proto   # generates assembly/proto and types
+koinos-sdk-as-cli generate-contract-as counter.proto
+</code></pre>
+    <p>This creates <code>assembly/Counter.boilerplate.ts</code> and <code>assembly/index.ts</code> with a structure.</p>
+        <li><strong>Implement logic (<code>Counter.ts</code>):</strong></li>
+<pre><code class="language-typescript">import { System, Protobuf, Uint64 } from "@koinos/sdk-as";
+import { counter as ProtoNS } from "./proto/counter";
+
+const COUNTER_SPACE_ID = 0;  // using store id 0 for our counter
+const COUNTER_KEY = new Uint8Array(0); // using empty key (could also pick a specific bytes key)
+
+export class Counter {
+  // Helper to load current count from storage
+  private loadCounter(): u32 {
+    const space = new System.ObjectSpace(false, System.getContractId(), COUNTER_SPACE_ID);
+    const valueBytes = System.getBytes(space, COUNTER_KEY);
+    if (valueBytes !== null && valueBytes.length > 0) {
+      // decode uint32 from bytes (assuming little-endian encoding of u32)
+      return Protobuf.decode&lt;Uint64&gt;(valueBytes, Uint64.decode).toUint32();
+      // Note: using Uint64 from sdk-as as a container to decode 64-bit, since proto3 doesn't have unsigned 32 directly
+    }
+    return 0;
+  }
+
+  // Helper to save current count to storage
+  private saveCounter(value: u32): void {
+    const space = new System.ObjectSpace(false, System.getContractId(), COUNTER_SPACE_ID);
+    const uint64Val = new Uint64(value); // wrap u32 in Uint64 for encoding
+    System.putBytes(space, COUNTER_KEY, Protobuf.encode(uint64Val, Uint64.encode));
+  }
+
+  increment(args: ProtoNS.increment_arguments): ProtoNS.increment_result {
+    const incrementBy = args.amount || 1;
+    const current = this.loadCounter();
+    const updated = current + incrementBy;
+    this.saveCounter(updated);
+    const res = new ProtoNS.increment_result();
+    res.new_value = updated;
+    return res;
+  }
+
+  get_count(args: ProtoNS.get_count_arguments): ProtoNS.get_count_result {
+    const res = new ProtoNS.get_count_result();
+    res.value = this.loadCounter();
+    return res;
+  }
+}
+</code></pre>
+    <p>This contract uses the contract’s own storage to keep a counter (starting at 0 if not present). We used <code>System.getBytes</code> and <code>System.putBytes</code> for state (with an <code>ObjectSpace</code> identified by the contract’s address and an ID). We used <code>Uint64</code> from the SDK because the Protobuf encoding functions available expect a type; since proto3 <code>uint32</code> would be represented as a Varint, we leveraged the <code>Uint64</code> type to decode/encode it (setting a 32-bit value is fine as it will just be a smaller varint). This is a bit of a low-level detail; in a future SDK version they might include a convenience for unsigned 32.</p>
+        <li><strong>Compile the contract:</strong></li>
+<pre><code class="language-bash">koinos-sdk-as-cli build-all release counter.proto
+</code></pre>
+    <p>This yields <code>contract.wasm</code> and <code>counter.abi</code>. The ABI will have methods <code>increment</code> (not read-only) and <code>get_count</code> (<code>read_only = true</code>).</p>
+        <li><strong>Deploy the contract (CLI):</strong></li>
+<pre><code class="language-bash">> open wallet.counter.purse mypass
+Opened wallet: wallet.counter.purse
+> connect http://api.koinos.io
+Connected to endpoint http://api.koinos.io
+> upload build/release/contract.wasm
+Contract uploaded with address 1PMyCounterAddr...  (just an example)
+Transaction with ID 0x1234... submitted.
+Mana cost: X (Disk: Y, Network: Z, Compute: W)
+</code></pre>
+    <p>Now our counter is on-chain at address <code>1PMyCounterAddr...</code>.</p>
+        <li><strong>Register ABI and interact:</strong></li>
+<pre><code class="language-bash">> register counter 1PMyCounterAddr... abi/counter.abi
+Contract 'counter' at address 1PMyCounterAddr... registered
+
+> list
+counter.get_count   - Returns the current counter value
+counter.increment   - Increments the counter by an amount
+
+> counter.get_count
+value:0   # initial value is 0
+
+> counter.increment 5
+Calling counter.increment with arguments 'amount:5'
+Transaction with ID 0xabc... submitted.
+# (Wait a bit for transaction to be mined, CLI might not show result for state-changing call)
+> counter.get_count
+value:5
+
+> counter.increment   # no argument means default (0 in args, which we treat as 1)
+Calling counter.increment with arguments ''
+Transaction with ID 0xdef... submitted.
+
+> counter.get_count
+value:6
+</code></pre>
+    <p>As seen:</p>
+    <ul>
+        <li><code>get_count</code> returned 0 initially.</li>
+        <li>After <code>increment 5</code>, a transaction was made. The CLI does not directly output the return value of state-changing calls (unless you specifically fetch the transaction receipt). We then manually check <code>get_count</code> and see it became 5.</li>
+        <li>Then <code>increment</code> with no parameter used the default of 1, and the counter became 6.</li>
+    </ul>
+    <p>This demonstrates a simple read/write flow: read-only queries and state-changing updates.</p>
+    <p><strong>Error handling example:</strong> If our contract had a constraint (say it shouldn’t exceed some max value), we could add:</p>
+<pre><code class="language-typescript">if (updated > MAX_VALUE) {
+  System.exit(1);  // abort if limit exceeded
+}
+</code></pre>
+    <p>in the <code>increment</code> method. Then calls that break the rule would revert the state (counter remains unchanged). The CLI would report an error on that call, likely “RPC error: non-zero exit code” or similar.</p>
+    <p>By following this end-to-end example, you’ve seen how to create, deploy, and use a Koinos smart contract.</p>
+
+    <h2>System Contracts and Governance</h2>
+    <p>
+        Before concluding, it’s worth briefly identifying some key system contracts on Koinos and how they relate to your development:
+    </p>
+    <ul>
+        <li><strong>KOIN Token Contract:</strong> Implements the native token (KOIN) with standard methods like <code>transfer</code>, <code>balance_of</code>, etc., following the Koinos token standard (KRC-20 analogous). This is deployed at a well-known address (which the CLI may pre-register via config). When you transfer KOIN through CLI or wallets, you’re actually invoking this contract.</li>
+        <li><strong>Resource & Mana Management:</strong> There’s a system contract (or system calls) managing Mana regeneration and resource limits. This isn’t something you call directly, but it enforces the Mana model described earlier.</li>
+        <li><strong>Governance Contract:</strong> Handles on-chain proposals and voting by block producers. This contract receives proposal transactions (which contain changes like new system contract WASMs or parameter tweaks) and coordinates the voting phases (review, voting, application). If you’re running a node or a block producer, you might interact with this via special transactions, but as a dApp developer, you typically won’t touch it.</li>
+        <li><strong>Nameservice and Other Utilities:</strong> Koinos may have system contracts for account name resolution, etc. Not yet as prominent, but likely to come.</li>
+        <li><strong>NFT and Other Standards:</strong> The Koinos team and community have system or standard contracts for NFTs (non-fungible tokens, KRC-721 standard), governance tokens, staking contracts, etc. These can often serve as templates for your own contracts or you can interact with them (e.g., your game contract might call the NFT contract to mint an item).</li>
+    </ul>
+    <p>
+        Because system contracts are upgradeable by governance, always ensure you’re aware of current interface versions (the ABI) when interacting with them. The Koinos documentation and GitHub koinos-contracts-as or koinos-contracts-cpp repositories provide source code for these system contracts for reference.
+    </p>
+
+    <h2>Glossary of Koinos Terms</h2>
+    <p><strong>Koinos (KOIN):</strong> The native coin of the Koinos blockchain. Holding KOIN gives you Mana and governance power. KOIN itself is implemented as a smart contract (the KOIN token contract).</p>
+    <p><strong>Mana:</strong> A resource derived from KOIN that is consumed to execute transactions instead of paying fees. Mana regenerates over time (20% per day). If you have X KOIN fully charged, you have X Mana. Using Mana does not destroy KOIN; it temporarily “locks” a proportional amount of KOIN until regenerated.</p>
+    <p><strong>Resource Credits (RC):</strong> In Koinos, often refers to the granular accounting of resources (compute, disk, network) that Mana covers. RC limits can be set to restrict how much of your Mana someone else can use when you sponsor them. Essentially, RC is a technical detail; Mana is the user-facing concept.</p>
+    <p><strong>Smart Contract:</strong> A WebAssembly module deployed to a Koinos address that can be invoked by transactions or other contracts. Koinos smart contracts are upgradeable and can be written in multiple languages (AssemblyScript, C++, etc.).</p>
+    <p><strong>AssemblyScript (AS) SDK:</strong> The toolkit for writing Koinos contracts in AssemblyScript (TypeScript). Provides convenient libraries (<code>System</code>, <code>Protobuf</code>, etc.) for interacting with Koinos APIs. Most high-level examples use this.</p>
+    <p><strong>C++ SDK:</strong> The toolkit for writing Koinos contracts in C++. Allows low-level control and direct use of system calls. Requires WebAssembly-targeted compilation (WASI). Was the first SDK; core system contracts are written in C++.</p>
+    <p><strong>WASM (WebAssembly):</strong> The binary format in which Koinos contracts are compiled. The Koinos VM executes WASM code. Any language that can compile to WASM could be used if an SDK or bindings exist.</p>
+    <p><strong>Entry Point:</strong> A function entry in a smart contract that can be called externally. Represented by a 32-bit identifier on-chain. The ABI maps a human-readable name to this ID. For example, “transfer” might correspond to <code>0x62efa292</code>. The contract’s dispatch logic uses the entry point to invoke the correct function.</p>
+    <p><strong>ABI (Application Binary Interface):</strong> A JSON (or binary) file that describes a contract’s entry points (methods), their argument and return types (by referencing Protobuf message types), and other metadata. Clients use the ABI to encode arguments and decode results correctly. The ABI is generated from the <code>.proto</code> definitions and is essential for interacting with contracts via CLI, wallet, or library.</p>
+    <p><strong>Protobuf (Protocol Buffers):</strong> A serialization format used to define the structure of data exchanged with contracts. Koinos uses Protobuf messages for contract inputs/outputs, which ensures type-safe encoding/decoding across different languages. Developers write <code>.proto</code> files to define their contract’s interface, and the SDKs handle the rest.</p>
+    <p><strong>System Call:</strong> A function provided by the blockchain for contracts to use for core operations (reading args, accessing state, calling other contracts, etc.). These are analogous to an operating system’s system calls. In code, <code>System.getArguments</code>, <code>System.putBytes</code>, <code>System.exit</code>, etc., are wrappers around actual system calls. Each system call has an ID and is implemented either in the blockchain microservices or in system contracts. For instance, storing data actually involves a system call that interfaces with the chain’s state database.</p>
+    <p><strong>Object Space:</strong> A namespace for contract storage. It’s defined by a triple (system flag, zone, id). For user contracts, <code>system=false</code>, <code>zone</code> is the contract’s address, and <code>id</code> is a developer-chosen number to allow multiple distinct sub-stores. In our counter example, we used <code>id = 0</code> as a default space. Keys and values stored are byte arrays. The object space prevents contracts from interfering with each other’s data.</p>
+    <p><strong>System Contract:</strong> A smart contract with elevated privileges (can access <code>system=true</code> spaces, meaning global state). System contracts implement core blockchain logic (consensus, governance, token). They can only be upgraded via governance proposals (except in testnet or development where a manual upload might be possible by consensus override).</p>
+    <p><strong>User Contract:</strong> Any contract deployed by an end-user or developer to implement custom logic (dApps, tokens, etc.). Lives in user space, cannot directly alter global state or parameters. Upgradeable by the address owner.</p>
+    <p><strong>Governance (Decentralized Governance):</strong> The on-chain process by which Koinos stakeholders (block producers) propose and vote on upgrades or changes. A successful governance proposal might upgrade a system contract or change a parameter (like block size, etc.). Governance ensures Koinos can evolve without hard forks, as long as consensus of validators is achieved on-chain.</p>
+    <p><strong>Koinos CLI:</strong> A command-line interface tool to interact with the Koinos blockchain. Allows wallet management, token transfers, contract uploads, and contract calls in an interactive shell. It’s a crucial developer tool for testing and deploying contracts.</p>
+    <p><strong>Koilib:</strong> A JavaScript library for Koinos that simplifies building web or Node.js applications. It can create and sign transactions, call contract functions (including waiting for confirmations), and integrate with wallets like Kondor. Essentially, Koilib is to Koinos what web3.js or ethers.js is to Ethereum.</p>
+    <p><strong>Kondor:</strong> A browser extension wallet for Koinos. Manages keys and identities, and injects a provider into web pages for dApps to interact with. Kondor allows users to approve or reject transactions requested by dApps, providing security. It’s analogous to MetaMask for Ethereum. Kondor uses Koilib internally and supports the latest Koinos features.</p>
+    <p><strong>Harbinger Testnet:</strong> The public test network for Koinos where developers can deploy and test contracts with test KOIN (tKOIN) without risking real funds. It mirrors mainnet behavior but typically runs newer, sometimes experimental versions of system contracts to “harbinger” what comes to mainnet. Use a faucet to get tKOIN, and use the testnet API endpoints or KoinosBlocks explorer for Harbinger.</p>
+    <p><strong>Mainnet:</strong> The live Koinos network where real KOIN is used. Contracts deployed here are live for end-users. Always double-check addresses and be cautious when upgrading contracts on mainnet due to the irreversible consequences.</p>
+
+    <p>
+        With this comprehensive knowledge, you are now equipped to develop, deploy, and manage smart contracts on Koinos. The feeless Mana model, upgradeability, and familiar development process (especially using AssemblyScript) make Koinos an exciting platform for decentralized applications. Happy coding on Koinos!
+    </p>
+
+</body>
+</html>
