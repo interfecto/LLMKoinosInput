@@ -1,1 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koilib v9.1.0 Documentation</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 900px; margin: auto; }
+        h1, h2, h3, h4, h5 { color: #333; margin-top: 1.5em; margin-bottom: 0.5em; }
+        h1 { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        h2 { border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 2em; }
+        h3 { background-color: #f9f9f9; padding: 8px; border-left: 4px solid #007bff; }
+        h4 { color: #555; border-bottom: 1px dashed #ddd; padding-bottom: 3px; }
+        h5 { color: #444; margin-top: 1.2em; }
+        pre { background-color: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 15px; overflow-x: auto; font-size: 0.9em;}
+        code { font-family: monospace; }
+        blockquote { border-left: 3px solid #ccc; padding-left: 15px; color: #555; margin-left: 0; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        ul, ol { margin-left: 20px; }
+        li { margin-bottom: 5px; }
+        dl { margin-left: 10px; }
+        dt { font-weight: bold; color: #333; margin-top: 0.8em;}
+        dd { margin-left: 20px; margin-bottom: 0.5em; }
+        .defined-in { font-size: 0.8em; color: #777; font-style: italic; }
+        .optional-tag { color: #e67e22; font-weight: bold; font-size: 0.9em; margin-right: 5px;}
+        .property-name { font-weight: bold; font-family: monospace; color: #c0392b; }
+        .type-name { font-family: monospace; color: #2980b9; }
+        .param-name { font-style: italic; color: #16a085; }
+        .note { background-color: #fff3cd; border-left: 4px solid #ffeeba; padding: 10px; margin: 10px 0; font-size: 0.9em; }
+    </style>
+    </head>
+<body>
 
+<h1>Koilib v9.1.0 Documentation</h1>
+
+<section id="classes">
+    <h2>Classes</h2>
+
+    <section id="class-contract">
+        <h3>Class Contract</h3>
+        <p>The contract class contains the contract ID and contract entries definition needed to encode/decode operations during the interaction with the user and the communication with the RPC node.</p>
+
+        <h4>Example</h4>
+        <pre><code class="language-javascript">
+const { Contract, Provider, Signer, utils } = require("koilib");
+const rpcNodes = ["http://api.koinos.io"];
+const privateKey = "f186a5de49797bfd52dc42505c33d75a46822ed5b60046e09d7c336242e20200";
+const provider = new Provider(rpcNodes);
+const signer = new Signer({ privateKey, provider });
+const koinContract = new Contract({
+  id: "15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL",
+  abi: utils.tokenAbi,
+  provider,
+  signer,
+});
+const koin = koinContract.functions;
+
+async function main() {
+  // Get balance
+  const { result } = await koin.balanceOf({
+    owner: "12fN2CQnuJM8cMnWZ1hPtM4knjLME8E4PD",
+  });
+  console.log(result) // Output: { value: '...' }
+
+  // Transfer
+  const { transaction, receipt } = await koin.transfer({
+    from: signer.getAddress(),
+    to: "172AB1FgCsYrRAW5cwQ8KjadgxofvgPFd6",
+    value: "1000010000", // 10.00010000
+  });
+  console.log(`Transaction id ${transaction.id} submitted. Receipt:`);
+  console.log(receipt);
+
+  // wait to be mined
+  const blockNumber = await transaction.wait();
+  console.log(`Transaction mined. Block number: ${blockNumber}`);
+}
+
+main();
+        </code></pre>
+
+        <h4>Hierarchy</h4>
+        <p>Contract</p>
+        <p class="defined-in">Defined in Contract.ts:64</p>
+
+        <h4>INDEX</h4>
+        <h5>Constructors</h5>
+        <ul><li>constructor</li></ul>
+        <h5>Properties</h5>
+        <ul>
+            <li>abi?</li>
+            <li>bytecode?</li>
+            <li>functions</li>
+            <li>id</li>
+            <li>options</li>
+            <li>provider?</li>
+            <li>serializer?</li>
+            <li>signer?</li>
+        </ul>
+        <h5>Methods</h5>
+        <ul>
+            <li>decodeEvent</li>
+            <li>decodeOperation</li>
+            <li>deploy</li>
+            <li>encodeOperation</li>
+            <li>fetchAbi</li>
+            <li>getId</li>
+            <li>updateFunctionsFromAbi</li>
+        </ul>
+
+        <h4>Constructors</h4>
+        <h5>constructor</h5>
+        <pre><code class="language-typescript">
+new Contract(c: {
+  abi?: Abi;
+  bytecode?: Uint8Array;
+  id?: string;
+  options?: ContractTransactionOptions;
+  provider?: ProviderInterface;
+  serializer?: Serializer;
+  signer?: SignerInterface;
+}): Contract
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd>
+                <code>c: { abi?: Abi; bytecode?: Uint8Array; id?: string; options?: ContractTransactionOptions; provider?: ProviderInterface; serializer?: Serializer; signer?: SignerInterface }</code>
+                <dl>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">abi</code>: <code class="type-name">Abi</code></dt><dd></dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">bytecode</code>: <code class="type-name">Uint8Array</code></dt><dd></dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">id</code>: <code class="type-name">string</code></dt><dd></dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">options</code>: <code class="type-name">ContractTransactionOptions</code></dt><dd></dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">provider</code>: <code class="type-name">ProviderInterface</code></dt><dd></dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">serializer</code>: <code class="type-name">Serializer</code></dt><dd>Set this option if you can not use <code>eval</code> functions in the current environment. In such cases, the serializer must come from an environment where it is able to use those functions.</dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">signer</code>: <code class="type-name">SignerInterface</code></dt><dd></dd>
+                </dl>
+            </dd>
+            <dt>Returns</dt><dd><code class="type-name">Contract</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:144</p>
+
+        <h4>Properties</h4>
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">abi</code></h5>
+        <p><code class="type-name">Abi</code></p>
+        <p>Application Binary Interface</p>
+        <p class="defined-in">Defined in Contract.ts:115</p>
+
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">bytecode</code></h5>
+        <p><code class="type-name">Uint8Array</code></p>
+        <p>Bytecode. Needed to deploy the smart contract.</p>
+        <p class="defined-in">Defined in Contract.ts:135</p>
+
+        <h5><code class="property-name">functions</code></h5>
+        <p><code class="type-name">{ [x: string]: (&lt;T&gt;(args?: any, opts?: CallContractOptions) =&gt; Promise&lt;{ operation: OperationJson; receipt?: TransactionReceipt; result?: T; transaction?: TransactionJsonWait }&gt;) }</code></p>
+        <p>Set of functions to interact with the smart contract. These functions are automatically generated in the constructor of the class</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const owner = "1Gvqdo9if6v6tFomEuTuMWP1D7H7U9yksb";
+await koinContract.functions.balanceOf({ owner });
+        </code></pre>
+        <h6>Example (using options)</h6>
+        <pre><code class="language-javascript">
+await koinContract.functions.transfer({
+  from: "1Gvqdo9if6v6tFomEuTuMWP1D7H7U9yksb",
+  to: "15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL",
+  value: "1",
+},{
+  chainId: "EiB-hw5ABo-EXy6fGDd1Iq3gbAenxQ4Qe60pRbEVMVrR9A==",
+  rcLimit: "100000000",
+  nonce: "OAI=",
+  payer: "19JntSm8pSNETT9aHTwAUHC5RMoaSmgZPJ",
+  payee: "1Gvqdo9if6v6tFomEuTuMWP1D7H7U9yksb",
+  signTransaction: true,
+  sendTransaction: true,
+  broadcast: true,
+  sendAbis: true,
+});
+        </code></pre>
+        <h6>Type declaration</h6>
+        <pre><code class="language-typescript">
+[x: string]: &lt;T = Record&lt;string, any&gt;&gt;(
+  args?: any,
+  opts?: CallContractOptions
+) =&gt; Promise&lt;{
+  operation: OperationJson;
+  receipt?: TransactionReceipt;
+  result?: T;
+  transaction?: TransactionJsonWait;
+}&gt;;
+        </code></pre>
+        <p class="defined-in">Defined in Contract.ts:100</p>
+
+        <h5><code class="property-name">id</code></h5>
+        <p><code class="type-name">Uint8Array</code></p>
+        <p>Contract ID</p>
+        <p class="defined-in">Defined in Contract.ts:68</p>
+
+        <h5><code class="property-name">options</code></h5>
+        <p><code class="type-name">ContractTransactionOptions</code></p>
+        <p>Options to apply when creating transactions. By default it set rc_limit to 1e8, sendTransaction true, sendAbis true, and nonce undefined (to get it from the blockchain)</p>
+        <p class="defined-in">Defined in Contract.ts:142</p>
+
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">provider</code></h5>
+        <p><code class="type-name">ProviderInterface</code></p>
+        <p>Provider to connect with the blockchain</p>
+        <p class="defined-in">Defined in Contract.ts:125</p>
+
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">serializer</code></h5>
+        <p><code class="type-name">Serializer</code></p>
+        <p>Serializer to serialize/deserialize data types</p>
+        <p class="defined-in">Defined in Contract.ts:130</p>
+
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">signer</code></h5>
+        <p><code class="type-name">SignerInterface</code></p>
+        <p>Signer interacting with the smart contract</p>
+        <p class="defined-in">Defined in Contract.ts:120</p>
+
+        <h4>Methods</h4>
+        <h5>decodeEvent</h5>
+        <pre><code class="language-typescript">
+decodeEvent(event: EventData): Promise&lt;DecodedEventData&gt;
+        </code></pre>
+        <p>Decode an event received in a receipt</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const contract = new Contract({
+  id: "15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL",
+  abi: utils.tokenAbi,
+});
+const event = {
+  sequence: 1,
+  source: "15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL",
+  name: "koinos.contracts.token.mint_event",
+  data: "ChkAxjdqxuwS-B50lPQ-lqhRBA3bf2b2ooAHENrw3Ek=",
+  impacted: ["1K55BRw87nd64a7aiRarp6DLGRzYvoJo8J"],
+};
+const eventDecoded = await contract.decodeEvent(event);
+console.log(eventDecoded);
+/* Output:
+{
+  sequence: 1,
+  source: "15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL",
+  name: "koinos.contracts.token.mint_event",
+  data: "ChkAxjdqxuwS-B50lPQ-lqhRBA3bf2b2ooAHENrw3Ek=",
+  impacted: ["1K55BRw87nd64a7aiRarp6DLGRzYvoJo8J"],
+  args: {
+    to: "1K55BRw87nd64a7aiRarp6DLGRzYvoJo8J",
+    value: "154613850",
+  },
+}
+*/
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">event</code>: <code class="type-name">EventData</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;DecodedEventData&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:599</p>
+
+        <h5>decodeOperation</h5>
+        <pre><code class="language-typescript">
+decodeOperation(op: OperationJson): Promise&lt;DecodedOperationJson&gt;
+        </code></pre>
+        <p>Decodes a contract operation to be human readable</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const opDecoded = await contract.decodeOperation({
+  call_contract: {
+    contract_id: "19JntSm8pSNETT9aHTwAUHC5RMoaSmgZPJ",
+    entry_point: 0x27f576ca,
+    args: "ChkAEjl6vrl55V2Oym_rzsnMxIqBoie9PHmMEhkAQgjT1UACatdFY3e5QRkyG7OAzwcCCIylGOgH",
+  }
+});
+console.log(opDecoded);
+/* Output:
+{
+  name: "transfer",
+  args: {
+    from: "12fN2CQnuJM8cMnWZ1hPtM4knjLME8E4PD",
+    to: "172AB1FgCsYrRAW5cwQ8KjadgxofvgPFd6",
+    value: "1000",
+  },
+}
+*/
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">op</code>: <code class="type-name">OperationJson</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;DecodedOperationJson&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:539</p>
+
+        <h5>deploy</h5>
+        <pre><code class="language-typescript">
+deploy(options?: DeployOptions): Promise&lt;{
+  operation: OperationJson;
+  receipt?: TransactionReceipt;
+  transaction?: TransactionJsonWait;
+}&gt;
+        </code></pre>
+        <p>Function to deploy a new smart contract. The Bytecode must be defined in the constructor of the class</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const privateKey = "f186a5de49797bfd52dc42505c33d75a46822ed5b60046e09d7c336242e20200";
+const provider = new Provider(["http://api.koinos.io"]);
+const signer = new Signer({ privateKey, provider });
+const bytecode = new Uint8Array([1, 2, 3, 4]); // Example bytecode
+const contract = new Contract({ signer, provider, bytecode });
+const { transaction, receipt } = await contract.deploy();
+console.log(receipt);
+// wait to be mined
+const blockNumber = await transaction.wait();
+console.log(`Contract uploaded in block number ${blockNumber}`);
+        </code></pre>
+        <h6>Example (using options)</h6>
+        <pre><code class="language-javascript">
+const { transaction, receipt } = await contract.deploy({
+  // contract options
+  abi: JSON.stringify(contract.abi), // Assuming contract has abi populated
+  authorizesCallContract: true,
+  authorizesTransactionApplication: true,
+  authorizesUploadContract: true,
+
+  // transaction options
+  chainId: "EiB-hw5ABo-EXy6fGDd1Iq3gbAenxQ4Qe60pRbEVMVrR9A==",
+  rcLimit: "100000000",
+  nonce: "OAI=",
+  payer: "19JntSm8pSNETT9aHTwAUHC5RMoaSmgZPJ",
+  payee: "1Gvqdo9if6v6tFomEuTuMWP1D7H7U9yksb",
+
+  // sign and broadcast
+  signTransaction: true,
+  sendTransaction: true,
+  broadcast: true,
+});
+console.log(receipt);
+// wait to be mined
+const blockNumber = await transaction.wait();
+console.log(`Contract uploaded in block number ${blockNumber}`);
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">options</code>: <code class="type-name">DeployOptions</code></dd>
+            <dt>Returns</dt>
+            <dd><code class="type-name">Promise&lt;{ operation: OperationJson; receipt?: TransactionReceipt; transaction?: TransactionJsonWait }&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:391</p>
+
+        <h5>encodeOperation</h5>
+        <pre><code class="language-typescript">
+encodeOperation(op: DecodedOperationJson): Promise&lt;OperationJson&gt;
+        </code></pre>
+        <p>Encondes a contract operation using Koinos serialization and taking the contract entries as reference to build it</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const opEncoded = await contract.encodeOperation({
+  name: "transfer",
+  args: {
+    from: "12fN2CQnuJM8cMnWZ1hPtM4knjLME8E4PD",
+    to: "172AB1FgCsYrRAW5cwQ8KjadgxofvgPFd6",
+    value: "1000",
+  }
+});
+
+console.log(opEncoded);
+/* Output:
+{
+  call_contract: {
+    contract_id: "19JntSm8pSNETT9aHTwAUHC5RMoaSmgZPJ", // Example contract ID
+    entry_point: 670398154, // Example entry point for transfer
+    args: "ChkAEjl6vrl55V2Oym_rzsnMxIqBoie9PHmMEhkAQgjT1UACatdFY3e5QRkyG7OAzwcCCIylGOgH", // Example encoded args
+  }
+}
+*/
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><code class="param-name">op</code>: <code class="type-name">DecodedOperationJson</code><br/>Operation to encode</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;OperationJson&gt;</code><br/>Operation encoded</dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:492</p>
+
+        <h5>fetchAbi</h5>
+        <pre><code class="language-typescript">
+fetchAbi(opts?: { updateFunctions: boolean; updateSerializer: boolean }): Promise&lt;undefined | Abi&gt;
+        </code></pre>
+        <p>Fetch the ABI from the contract meta store and save it in the abi of the contract. The provider must have contract_meta_store microservice enabled.</p>
+        <dl>
+            <dt>Parameters</dt>
+            <dd>
+                <span class="optional-tag">(Optional)</span> <code class="param-name">opts</code>: <code class="type-name">{ updateFunctions: boolean; updateSerializer: boolean }</code> (Default: <code>{ updateFunctions: true, updateSerializer: true }</code>)<br/>
+                options object with 2 boolean: 1) updateFunctions to specify if the contract functions should be regenerated based on the new ABI, and 2) updateSerializer to determine if the serializer should be updated with the types in the new ABI.
+                <dl>
+                    <dt><code class="param-name">updateFunctions</code>: <code class="type-name">boolean</code></dt><dd></dd>
+                    <dt><code class="param-name">updateSerializer</code>: <code class="type-name">boolean</code></dt><dd></dd>
+                </dl>
+            </dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;undefined | Abi&gt;</code><br/>the new ABI saved in the contract</dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:204</p>
+
+        <h5>getId</h5>
+        <pre><code class="language-typescript">
+getId(): string
+        </code></pre>
+        <p>Get contract Id</p>
+        <dl>
+            <dt>Returns</dt><dd><code class="type-name">string</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:190</p>
+
+        <h5>updateFunctionsFromAbi</h5>
+        <pre><code class="language-typescript">
+updateFunctionsFromAbi(): boolean
+        </code></pre>
+        <p>Create the contract functions based on the ABI</p>
+        <dl>
+            <dt>Returns</dt><dd><code class="type-name">boolean</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Contract.ts:225</p> </section> <section id="class-provider">
+        <h3>Class Provider</h3>
+        <p>The Provider class handles communication with Koinos RPC nodes.</p>
+        <h4>Constructors</h4>
+        <h5>constructor</h5>
+        <pre><code class="language-typescript">new Provider(rpcNodes: string | string[]): Provider</code></pre>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider([
+  "https://api.koinos.io",
+  "https://api.koinosblocks.com"
+]);
+        </code></pre>
+        <dl>
+          <dt>Parameters</dt>
+          <dd><code class="param-name">rpcNodes</code>: <code class="type-name">string | string[]</code><br/>URL of the rpc node, or array of urls to switch between them when someone is down</dd>
+          <dt>Returns</dt><dd><code class="type-name">Provider</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:192</p>
+
+        <h4>Properties</h4>
+        <h5><code class="property-name">currentNodeId</code></h5>
+        <p><code class="type-name">number</code></p>
+        <p>Index of current node in rpcNodes</p>
+        <p class="defined-in">Defined in Provider.ts:178</p>
+        <h5><code class="property-name">onError</code></h5>
+        <p><code class="type-name">(error: Error, currentNode: string, newNode: string) =&gt; boolean</code></p>
+        <p>Function triggered when a node is down. Returns a boolean determining if the call should be aborted.</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider(["https://api.koinos.io"]);
+
+provider.onError = (error, node, newNode) => {
+  console.log(`Error from node ${node}: ${error.message}`);
+  console.log(`changing node to ${newNode}`);
+  const abort = false; // Set to true to stop trying other nodes
+  return abort;
+}
+        </code></pre>
+        <p class="defined-in">Defined in Provider.ts:165</p>
+        <h5><code class="property-name">rpcNodes</code></h5>
+        <p><code class="type-name">string[]</code></p>
+        <p>Array of URLs of RPC nodes</p>
+        <p class="defined-in">Defined in Provider.ts:147</p>
+
+        <h4>Methods</h4>
+        <h5>call</h5>
+        <pre><code class="language-typescript">&lt;T = unknown&gt;(method: string, params: unknown): Promise&lt;T&gt;</code></pre>
+        <p>Function to make jsonrpc requests to the RPC node</p>
+        <p>To know the full list of possible calls check the services listed in the <a href="https://github.com/koinos/koinos-proto/tree/master/koinos/rpc" target="_blank" rel="noopener noreferrer">rpc folder of koinos-proto</a> and the corresponding proto files.</p>
+        <h6>Example (account_history.get_account_history)</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider(["https://api.koinos.io"]);
+const result = await provider.call(
+  "account_history.get_account_history",
+  {
+    address: "1z629tURV9KAK6Q5yqFDozwSHeWshxXQe", // Example address
+    limit: "2", // Request 2 history entries
+    ascending: true,
+    irreversible: true,
+  }
+);
+console.log(JSON.stringify(result, null, 2));
+// (See previous example output for structure)
+        </code></pre>
+        <dl>
+          <dt>Parameters</dt>
+          <dd><code class="param-name">method</code>: <code class="type-name">string</code> - jsonrpc method</dd>
+          <dd><code class="param-name">params</code>: <code class="type-name">unknown</code> - jsonrpc params</dd>
+          <dt>Returns</dt><dd><code class="type-name">Promise&lt;T&gt;</code> - Result of jsonrpc response</dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:350</p>
+        <h5>getAccountRc</h5>
+        <pre><code class="language-typescript">getAccountRc(account: string): Promise&lt;string&gt;</code></pre>
+        <dl><dt>Parameters</dt><dd><code class="param-name">account</code>: <code class="type-name">string</code></dd><dt>Returns</dt><dd><code class="type-name">Promise&lt;string&gt;</code></dd></dl>
+        <p class="defined-in">Defined in Provider.ts:457</p>
+        <h5>getBlock</h5>
+        <pre><code class="language-typescript">getBlock(height: number, opts?: GetBlockOptions): Promise&lt;{ block: BlockJson; block_height: string; block_id: string; receipt: BlockReceipt }&gt;</code></pre>
+        <p>Function to get a block by its height</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider("https://api.koinos.io");
+const blockData = await provider.getBlock(14951433); // Example block height
+console.log(blockData);
+// (See previous example output for structure)
+        </code></pre>
+         <h6>Example (Reduced Info)</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider("https://api.koinos.io");
+const blockInfo = await provider.getBlock(14951433, {
+  returnReceipt: false,
+  returnBlock: false
+});
+console.log(blockInfo);
+/* Output:
+{
+  block_id: '0x1220d5e848eb0f69c590c24cbea4391f89a1055f540bc265c60f6b13c4cc0055ec36',
+  block_height: '14951433'
+}
+*/
+        </code></pre>
+        <dl>
+          <dt>Parameters</dt>
+          <dd><code class="param-name">height</code>: <code class="type-name">number</code></dd>
+          <dd><span class="optional-tag">(Optional)</span> <code class="param-name">opts</code>: <code class="type-name">GetBlockOptions</code></dd>
+          <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ block: BlockJson; block_height: string; block_id: string; receipt: BlockReceipt }&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:665</p>
+        <h5>getBlocks</h5>
+        <pre><code class="language-typescript">getBlocks(height: number, numBlocks?: number, idRef?: string, opts?: GetBlockOptions): Promise&lt;{ block: BlockJson; block_height: string; block_id: string; receipt: BlockReceipt }[]&gt;</code></pre>
+         <p>Function to get consecutive blocks in descending order</p>
+        <dl>
+          <dt>Parameters</dt>
+           <dd><code class="param-name">height</code>: <code class="type-name">number</code> - Starting block height</dd>
+           <dd><span class="optional-tag">(Optional)</span> <code class="param-name">numBlocks</code>: <code class="type-name">number</code> (Default: 1) - Number of blocks to fetch</dd>
+           <dd><span class="optional-tag">(Optional)</span> <code class="param-name">idRef</code>: <code class="type-name">string</code> - Block ID reference to speed up searching blocks. This ID must be from a greater block height. By default it gets the ID from the block head.</dd>
+           <dd><span class="optional-tag">(Optional)</span> <code class="param-name">opts</code>: <code class="type-name">GetBlockOptions</code></dd>
+          <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ block: BlockJson; block_height: string; block_id: string; receipt: BlockReceipt }[]&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:558</p>
+        <h5>getBlocksById</h5>
+         <pre><code class="language-typescript">getBlocksById(blockIds: string[], opts?: GetBlockOptions): Promise&lt;{ block_items: { block: BlockJson; block_height: string; block_id: string; receipt: BlockReceipt }[] }&gt;</code></pre>
+         <dl>
+            <dt>Parameters</dt>
+             <dd><code class="param-name">blockIds</code>: <code class="type-name">string[]</code></dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">opts</code>: <code class="type-name">GetBlockOptions</code></dd>
+             <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ block_items: { block: BlockJson; block_height: string; block_id: string; receipt: BlockReceipt }[] }&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Provider.ts:484</p>
+        <h5>getChainId</h5>
+         <pre><code class="language-typescript">getChainId(): Promise&lt;string&gt;</code></pre>
+         <p>Function to get the chain ID</p>
+         <dl><dt>Returns</dt><dd><code class="type-name">Promise&lt;string&gt;</code></dd></dl>
+         <p class="defined-in">Defined in Provider.ts:542</p>
+         <h5>getForkHeads</h5>
+         <pre><code class="language-typescript">getForkHeads(): Promise&lt;{ fork_heads: BlockTopology[]; last_irreversible_block: BlockTopology }&gt;</code></pre>
+         <p>Function to call "chain.get_fork_heads" to get fork heads</p>
+         <dl><dt>Returns</dt><dd><code class="type-name">Promise&lt;{ fork_heads: BlockTopology[]; last_irreversible_block: BlockTopology }&gt;</code></dd></dl>
+         <p class="defined-in">Defined in Provider.ts:906</p>
+        <h5>getHeadInfo</h5>
+        <pre><code class="language-typescript">getHeadInfo(): Promise&lt;{ head_block_time: string; head_state_merkle_root: string; head_topology: BlockTopology; last_irreversible_block: string }&gt;</code></pre>
+        <p>Function to get info from the head block in the blockchain</p>
+         <h6>Example</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider("https://api.koinos.io");
+const headInfo = await provider.getHeadInfo();
+console.log(headInfo);
+/* Output:
+{
+  head_topology: {
+    id: '0x...',
+    height: '...',
+    previous: '0x...'
+  },
+  last_irreversible_block: '...',
+  head_state_merkle_root: '...',
+  head_block_time: '...'
+}
+*/
+        </code></pre>
+        <dl><dt>Returns</dt><dd><code class="type-name">Promise&lt;{ head_block_time: string; head_state_merkle_root: string; head_topology: BlockTopology; last_irreversible_block: string }&gt;</code></dd></dl>
+        <p class="defined-in">Defined in Provider.ts:525</p>
+        <h5>getNextNonce</h5>
+        <pre><code class="language-typescript">getNextNonce(account: string): Promise&lt;string&gt;</code></pre>
+        <p>Function to call "chain.get_account_nonce" (number of transactions for a particular account) and return the next nonce. This call is used when creating new transactions. The result is encoded in base64url</p>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">account</code>: <code class="type-name">string</code> - account address</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;string&gt;</code> - Next Nonce</dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:444</p>
+        <h5>getNonce</h5>
+        <pre><code class="language-typescript">getNonce(account: string, deserialize?: boolean): Promise&lt;string | number&gt;</code></pre>
+        <p>Function to call "chain.get_account_nonce" to return the number of transactions for a particular account. If you are creating a new transaction consider using <code>Provider.getNextNonce</code>.</p>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><code class="param-name">account</code>: <code class="type-name">string</code> - account address</dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">deserialize</code>: <code class="type-name">boolean</code> (Default: true) - If set true it will deserialize the nonce and return it as number (default). If set false it will return the nonce encoded as received from the RPC.</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;string | number&gt;</code> - Nonce</dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:413</p>
+        <h5>getResourceLimits</h5>
+        <pre><code class="language-typescript">getResourceLimits(): Promise&lt;{ resource_limit_data: { compute_bandwidth_cost: string; compute_bandwidth_limit: string; disk_storage_cost: string; disk_storage_limit: string; network_bandwidth_cost: string; network_bandwidth_limit: string } }&gt;</code></pre>
+        <p>Funciont to call "chain.get_resource_limits" to get resource limits</p>
+        <dl><dt>Returns</dt><dd><code class="type-name">Promise&lt;{ resource_limit_data: { compute_bandwidth_cost: string; ... } }&gt;</code></dd></dl>
+        <p class="defined-in">Defined in Provider.ts:917</p>
+        <h5>getTransactionsById</h5>
+        <pre><code class="language-typescript">getTransactionsById(transactionIds: string[]): Promise&lt;{ transactions: { containing_blocks: string[]; transaction: TransactionJson }[] }&gt;</code></pre>
+        <p>Get transactions by id and their corresponding block ids</p>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">transactionIds</code>: <code class="type-name">string[]</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ transactions: { containing_blocks: string[]; transaction: TransactionJson }[] }&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:468</p>
+        <h5>invokeGetContractAddress</h5>
+        <pre><code class="language-typescript">invokeGetContractAddress(name: string): Promise&lt;undefined | { value: { address: string } }&gt;</code></pre>
+        <p>Function to get the address of a system contract</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider("https://api.koinos.io");
+const result = await provider.invokeGetContractAddress("koin");
+console.log(result);
+/* Output:
+{ value: { address: '15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL' } }
+*/
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">name</code>: <code class="type-name">string</code> - contract name</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;undefined | { value: { address: string } }&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:1070</p>
+        <h5>invokeGetContractMetadata</h5>
+        <pre><code class="language-typescript">invokeGetContractMetadata(contractId: string): Promise&lt;undefined | { value: { authorizes_call_contract: boolean; authorizes_transaction_application: boolean; authorizes_upload_contract: boolean; hash: string; system: boolean } }&gt;</code></pre>
+        <p>Function to get the contract metadata of a specific contract.</p>
+         <h6>Example</h6>
+        <pre><code class="language-javascript">
+const provider = new Provider("https://api.koinos.io");
+const result = await provider.invokeGetContractMetadata("15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL"); // KOIN contract ID
+console.log(result);
+/* Output:
+{
+  value: {
+    hash: '0x...',
+    system: true,
+    authorizes_call_contract: true,
+    authorizes_transaction_application: true,
+    authorizes_upload_contract: true
+  }
+}
+*/
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">contractId</code>: <code class="type-name">string</code> - contract ID</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;undefined | { value: { authorizes_call_contract: boolean; ...} }&gt;</code></dd>
+        </dl>
+         <p class="defined-in">Defined in Provider.ts:987</p>
+        <h5>invokeSystemCall</h5>
+        <pre><code class="language-typescript">&lt;T = Record&lt;string, unknown&gt;&gt;(serializer: Serializer, nameOrId: string | number, args: Record&lt;string, unknown&gt;, callerData?: { caller: string; caller_privilege: number }): Promise&lt;undefined | T&gt;</code></pre>
+        <p>Function to call "chain.invoke_system_call" to invoke a system call.</p>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><code class="param-name">serializer</code>: <code class="type-name">Serializer</code></dd>
+            <dd><code class="param-name">nameOrId</code>: <code class="type-name">string | number</code></dd>
+            <dd><code class="param-name">args</code>: <code class="type-name">Record&lt;string, unknown&gt;</code></dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">callerData</code>: <code class="type-name">{ caller: string; caller_privilege: number }</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;undefined | T&gt;</code></dd>
+        </dl>
+         <p class="defined-in">Defined in Provider.ts:934</p>
+         <h5>readContract</h5>
+        <pre><code class="language-typescript">readContract(operation: CallContractOperationJson): Promise&lt;{ logs: string; result: string }&gt;</code></pre>
+        <p>Function to call "chain.read_contract" to read a contract. This function is used by <code>Contract</code> class when read methods are invoked.</p>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">operation</code>: <code class="type-name">CallContractOperationJson</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ logs: string; result: string }&gt;</code></dd>
+        </dl>
+         <p class="defined-in">Defined in Provider.ts:896</p>
+         <h5>sendTransaction</h5>
+        <pre><code class="language-typescript">sendTransaction(transaction: TransactionJson | TransactionJsonWait, broadcast?: boolean): Promise&lt;{ receipt: TransactionReceipt; transaction: TransactionJsonWait }&gt;</code></pre>
+        <p>Function to call "chain.submit_transaction" to send a signed transaction to the blockchain.</p>
+        <p>It also has the option to not broadcast the transaction (to not include the transaction the mempool), which is useful if you want to test the interaction with a contract and check the possible events triggered.</p>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><code class="param-name">transaction</code>: <code class="type-name">TransactionJson | TransactionJsonWait</code> - Transaction</dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">broadcast</code>: <code class="type-name">boolean</code> (Default: true) - Option to broadcast the transaction to the whole network.</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ receipt: TransactionReceipt; transaction: TransactionJsonWait }&gt;</code> - It returns the receipt received from the RPC node and the transaction with the arrow function "wait" (see <code>wait</code>)</dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:833</p>
+        <h5>submitBlock</h5>
+        <pre><code class="language-typescript">submitBlock(block: BlockJson): Promise&lt;Record&lt;string, never&gt;&gt;</code></pre>
+        <p>Function to call "chain.submit_block" to send a signed block to the blockchain.</p>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">block</code>: <code class="type-name">BlockJson</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;Record&lt;string, never&gt;&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Provider.ts:887</p>
+        <h5>wait</h5>
+        <pre><code class="language-typescript">wait(txId: string, type?: "byBlock" | "byTransactionId", timeout?: number): Promise&lt;{ blockId: string; blockNumber?: number }&gt;</code></pre>
+        <p>Function to wait for a transaction to be mined.</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const { transaction } = await koin.transfer(...); // Assume transaction sent
+console.log(`Waiting for tx ${transaction.id}`);
+// Option 1 (Default: byTransactionId, 15s timeout)
+const { blockId, blockNumber } = await provider.wait(transaction.id);
+// Option 2 (Wait by block polling)
+// const { blockId, blockNumber } = await provider.wait(transaction.id, "byBlock", 30000); // 30s timeout
+console.log(`Transaction mined in block ${blockNumber} (${blockId})`);
+        </code></pre>
+         <dl>
+            <dt>Parameters</dt>
+            <dd><code class="param-name">txId</code>: <code class="type-name">string</code> - transaction id</dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">type</code>: <code class="type-name">"byBlock" | "byTransactionId"</code> (Default: "byTransactionId") - <code>byBlock</code> will query blocks; <code>byTransactionId</code> will query the "transaction store" microservice.</dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">timeout</code>: <code class="type-name">number</code> (Default: 15000) - Timeout in milliseconds.</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ blockId: string; blockNumber?: number }&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Provider.ts:694</p>
+
+    </section> <section id="class-signer">
+         <h3>Class Signer</h3>
+         <p>The Signer Class contains the private key needed to sign transactions. It can be created using the seed, wif, or private key</p>
+         <h4>Example</h4>
+         <h6>using private key as hex string</h6>
+         <pre><code class="language-javascript">var privateKey = "ec8601a24f81decd57f4b611b5ac6eb801cb3780bb02c0f9cdfe9d09daaddf9c";
+var signer = new Signer({ privateKey });</code></pre>
+         <h6>using private key as Uint8Array</h6>
+         <pre><code class="language-javascript">var buffer = new Uint8Array([
+  236, 134,   1, 162,  79, 129, 222, 205,
+   87, 244, 182,  17, 181, 172, 110, 184,
+    1, 203,  55, 128, 187,   2, 192, 249,
+  205, 254, 157,   9, 218, 173, 223, 156
+]);
+var signer = new Signer({ privateKey: buffer });</code></pre>
+         <h6>using private key as bigint</h6>
+         <pre><code class="language-javascript">var privateKey = 106982601049961974618234078204952280507266494766432547312316920283818886029212n;
+var signer = new Signer({ privateKey });</code></pre>
+         <h6>using the seed</h6>
+         <pre><code class="language-javascript">var signer = Signer.fromSeed("my seed");</code></pre>
+         <h6>using private key in WIF format</h6>
+         <pre><code class="language-javascript">var signer = Signer.fromWif("L59UtJcTdNBnrH2QSBA5beSUhRufRu3g6tScDTite6Msuj7U93tM");</code></pre>
+          <h6>defining a provider</h6>
+         <pre><code class="language-javascript">var provider = new Provider(["https://example.com/jsonrpc"]);
+var privateKey = "ec8601a24f81decd57f4b611b5ac6eb801cb3780bb02c0f9cdfe9d09daaddf9c";
+var signer = new Signer({ privateKey, provider });</code></pre>
+
+         <h4>Hierarchy</h4>
+         <p>Signer</p>
+         <p>Implements: <a href="#interface-signerinterface">SignerInterface</a></p>
+         <p class="defined-in">Defined in Signer.ts:126</p>
+
+        <h4>INDEX</h4>
+        <h5>Constructors</h5>
+        <ul><li>constructor</li></ul>
+        <h5>Properties</h5>
+        <ul>
+            <li>address</li>
+            <li>compressed</li>
+            <li>provider?</li>
+            <li>publicKey</li>
+            <li>sendOptions?</li>
+        </ul>
+        <h5>Methods</h5>
+        <ul>
+            <li>getAddress</li>
+            <li>getPrivateKey</li>
+            <li>prepareBlock</li>
+            <li>sendTransaction</li>
+            <li>signBlock</li>
+            <li>signHash</li>
+            <li>signMessage</li>
+            <li>signTransaction</li>
+        </ul>
+         <h5>Static Methods</h5>
+         <ul>
+             <li>fromSeed</li>
+             <li>fromWif</li>
+             <li>recoverAddress</li>
+             <li>recoverAddresses</li>
+             <li>recoverPublicKey</li>
+             <li>recoverPublicKeys</li>
+         </ul>
+
+        <h4>Constructors</h4>
+        <h5>constructor</h5>
+        <pre><code class="language-typescript">
+new Signer(c: {
+  compressed?: boolean;
+  privateKey: string | number | bigint | Uint8Array;
+  provider?: ProviderInterface;
+  sendOptions?: SendTransactionOptions;
+}): Signer
+        </code></pre>
+         <p>The constructor receives de private key as hexstring, bigint or Uint8Array. See also the functions <code>Signer.fromWif</code> and <code>Signer.fromSeed</code> to create the signer from the WIF or Seed respectively.</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const privateKey = "ec8601a24f81decd57f4b611b5ac6eb801cb3780bb02c0f9cdfe9d09daaddf9c";
+const signer = new Signer({ privateKey });
+console.log(signer.getAddress());
+// Output: 1MbL6mG8ASAvSYdoMnGUfG3ZXkmQ2dpL5b
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd>
+                <code>c: { compressed?: boolean; privateKey: string | number | bigint | Uint8Array; provider?: ProviderInterface; sendOptions?: SendTransactionOptions }</code>
+                <dl>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">compressed</code>: <code class="type-name">boolean</code></dt><dd></dd>
+                    <dt><code class="param-name">privateKey</code>: <code class="type-name">string | number | bigint | Uint8Array</code></dt><dd></dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">provider</code>: <code class="type-name">ProviderInterface</code></dt><dd></dd>
+                    <dt><span class="optional-tag">(Optional)</span> <code class="param-name">sendOptions</code>: <code class="type-name">SendTransactionOptions</code></dt><dd></dd>
+                 </dl>
+             </dd>
+             <dt>Returns</dt><dd><code class="type-name">Signer</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:171</p>
+
+         <h4>Properties</h4>
+        <h5><code class="property-name">address</code></h5>
+        <p><code class="type-name">string</code></p>
+        <p>Account address</p>
+        <p class="defined-in">Defined in Signer.ts:140</p>
+        <h5><code class="property-name">compressed</code></h5>
+        <p><code class="type-name">boolean</code></p>
+        <p>Boolean determining if the public/private key is using the compressed format</p>
+        <p class="defined-in">Defined in Signer.ts:131</p>
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">provider</code></h5>
+        <p><code class="type-name">ProviderInterface</code></p>
+        <p>Provider to connect with the blockchain</p>
+        <p class="defined-in">Defined in Signer.ts:145</p>
+        <h5><code class="property-name">publicKey</code></h5>
+        <p><code class="type-name">string | Uint8Array</code></p>
+        <p class="defined-in">Defined in Signer.ts:135</p>
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">sendOptions</code></h5>
+        <p><code class="type-name">SendTransactionOptions</code></p>
+        <p>Options to apply when sending a transaction. By default broadcast is true and the other fields are undefined</p>
+        <p class="defined-in">Defined in Signer.ts:152</p>
+
+        <h4>Methods</h4>
+        <h5>getAddress</h5>
+        <pre><code class="language-typescript">getAddress(compressed?: boolean): string</code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">compressed</code>: <code class="type-name">boolean</code> (Default: true) - determines if the address should be derived from the compressed public key (default) or the public key</dd>
+            <dt>Returns</dt><dd><code class="type-name">string</code> - Signer address</dd>
+        </dl>
+        <p class="defined-in">Defined in Signer.ts:235</p>
+        <h5>getPrivateKey</h5>
+        <pre><code class="language-typescript">getPrivateKey(format?: "hex" | "wif", compressed?: boolean): string</code></pre>
+        <p>Function to get the private key in hex format or wif format</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const signer = Signer.fromSeed("one two three four five six");
+console.log(signer.getPrivateKey()); // hex (default)
+// Output: bab7fd6e5bd624f4ea0c33f7e7219262a6fa93a945a8964d9f110148286b7b37
+
+console.log(signer.getPrivateKey("wif")); // WIF (compressed)
+// Output: L3UfgFJWmbVziGB1uZBjkG1UjKkF7hhpXWY7mbTUdmycmvXCVtiL
+
+console.log(signer.getPrivateKey("wif", false)); // WIF (uncompressed)
+// Output: 5KEX4TMHG66fT7cM9HMZLmdp4hVq4LC4X2Fkg6zeypM5UteWmtd
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">format</code>: <code class="type-name">"hex" | "wif"</code> (Default: "hex") - The format must be "hex" (default) or "wif"</dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">compressed</code>: <code class="type-name">boolean</code> (Default: true) - Optional arg when using WIF format. By default it uses the compressed value defined in the signer</dd>
+             <dt>Returns</dt><dd><code class="type-name">string</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:262</p>
+         <h5>prepareBlock</h5>
+        <pre><code class="language-typescript">prepareBlock(block: BlockJson): Promise&lt;BlockJson&gt;</code></pre>
+        <p>Function to prepare a block</p>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">block</code>: <code class="type-name">BlockJson</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;BlockJson&gt;</code> - A prepared block.</dd>
+        </dl>
+        <p class="defined-in">Defined in Signer.ts:589</p>
+         <h5>sendTransaction</h5>
+         <pre><code class="language-typescript">sendTransaction(transaction: TransactionJson | TransactionJsonWait, options?: SendTransactionOptions): Promise&lt;{ receipt: TransactionReceipt; transaction: TransactionJsonWait }&gt;</code></pre>
+         <p>Function to sign and send a transaction. It internally uses <code>Provider.sendTransaction</code></p>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">transaction</code>: <code class="type-name">TransactionJson | TransactionJsonWait</code> - Transaction to send. It will be signed inside this function if it is not signed yet</dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">options</code>: <code class="type-name">SendTransactionOptions</code> - Options for sending the transaction</dd>
+             <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ receipt: TransactionReceipt; transaction: TransactionJsonWait }&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:360</p>
+         <h5>signBlock</h5>
+        <pre><code class="language-typescript">signBlock(block: BlockJson): Promise&lt;BlockJson&gt;</code></pre>
+        <p>Function to sign a block for federated consensus. That is, just the ecdsa signature. For other algorithms, like PoW, you have to sign the block and then process the signature to add the extra data (nonce in the case of PoW).</p>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">block</code>: <code class="type-name">BlockJson</code> - Unsigned block</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;BlockJson&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Signer.ts:339</p>
+         <h5>signHash</h5>
+         <pre><code class="language-typescript">signHash(hash: Uint8Array): Promise&lt;Uint8Array&gt;</code></pre>
+         <p>Function to sign a hash value. It returns the bytes signature. The signature is in compact format with the recovery byte</p>
+         <dl>
+             <dt>Parameters</dt><dd><code class="param-name">hash</code>: <code class="type-name">Uint8Array</code> - Hash value. Also known as digest</dd>
+             <dt>Returns</dt><dd><code class="type-name">Promise&lt;Uint8Array&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:290</p>
+         <h5>signMessage</h5>
+         <pre><code class="language-typescript">signMessage(message: string | Uint8Array): Promise&lt;Uint8Array&gt;</code></pre>
+         <p>Function to sign a message, which could be a string or a Uint8Array</p>
+         <dl>
+             <dt>Parameters</dt><dd><code class="param-name">message</code>: <code class="type-name">string | Uint8Array</code></dd>
+             <dt>Returns</dt><dd><code class="type-name">Promise&lt;Uint8Array&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:306</p>
+         <h5>signTransaction</h5>
+         <pre><code class="language-typescript">signTransaction(tx: TransactionJson | TransactionJsonWait, _abis?: Record&lt;string, Abi&gt;): Promise&lt;TransactionJson&gt;</code></pre>
+         <p>Function to sign a transaction. It's important to remark that the transaction parameter is modified inside this function.</p>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">tx</code>: <code class="type-name">TransactionJson | TransactionJsonWait</code> - Unsigned transaction</dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">_abis</code>: <code class="type-name">Record&lt;string, Abi&gt;</code></dd>
+             <dt>Returns</dt><dd><code class="type-name">Promise&lt;TransactionJson&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:315</p>
+
+         <h4>Static Methods</h4>
+         <h5><code class="property-name">fromSeed</code> (Static)</h5>
+         <pre><code class="language-typescript">Signer.fromSeed(seed: string, compressed?: boolean): Signer</code></pre>
+         <p>Function to import a private key from the seed</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const signer = Signer.fromSeed("my seed");
+console.log(signer.getAddress());
+// Output: 1BqtgWBcqm9cSZ97avLGZGJdgso7wx6pCA
+        </code></pre>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">seed</code>: <code class="type-name">string</code> - Seed words</dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">compressed</code>: <code class="type-name">boolean</code> (Default: true)</dd>
+             <dt>Returns</dt><dd><code class="type-name">Signer</code> - Signer object</dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:225</p>
+         <h5><code class="property-name">fromWif</code> (Static)</h5>
+         <pre><code class="language-typescript">Signer.fromWif(wif: string, compressed?: boolean): Signer</code></pre>
+         <p>Function to import a private key from the WIF</p>
+         <h6>Example</h6>
+        <pre><code class="language-javascript">
+const signer = Signer.fromWif("L59UtJcTdNBnrH2QSBA5beSUhRufRu3g6tScDTite6Msuj7U93tM")
+console.log(signer.getAddress());
+// Output: 1MbL6mG8ASAvSYdoMnGUfG3ZXkmQ2dpL5b
+        </code></pre>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">wif</code>: <code class="type-name">string</code> - Private key in WIF format</dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">compressed</code>: <code class="type-name">boolean</code> (Default: true)</dd>
+             <dt>Returns</dt><dd><code class="type-name">Signer</code> - Signer object</dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:204</p>
+         <h5><code class="property-name">recoverAddress</code> (Static)</h5>
+        <pre><code class="language-typescript">Signer.recoverAddress(hash: Uint8Array, signature: Uint8Array, compressed?: boolean): string</code></pre>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">hash</code>: <code class="type-name">Uint8Array</code></dd>
+             <dd><code class="param-name">signature</code>: <code class="type-name">Uint8Array</code></dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">compressed</code>: <code class="type-name">boolean</code> (Default: true)</dd>
+             <dt>Returns</dt><dd><code class="type-name">string</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:415</p>
+         <h5><code class="property-name">recoverAddresses</code> (Static)</h5>
+        <pre><code class="language-typescript">Signer.recoverAddresses(txOrBlock: TransactionJson | BlockJson, opts?: RecoverPublicKeyOptions): Promise&lt;string[]&gt;</code></pre>
+        <p>Function to recover the signer addresses from a signed transaction or block. The output format can be compressed (default) or uncompressed.</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+// Assuming 'tx' is a signed TransactionJson object
+const addresses = await Signer.recoverAddresses(tx);
+        </code></pre>
+        <p>If the signature data contains more data, like in the blocks for PoW consensus, use the "transformSignature" function to extract the signature.</p>
+        <h6>Example (PoW)</h6>
+        <pre><code class="language-javascript">
+ const powDescriptorJson = { /* ... PoW descriptor ... */ };
+ const serializer = new Serializer(powDescriptorJson, { defaultTypeName: "pow_signature_data" });
+
+ // Assuming 'block' is a BlockJson object with PoW signature
+ const addresses = await Signer.recoverAddresses(block, {
+   transformSignature: async (signatureData) => {
+     const powSignatureData = await serializer.deserialize(signatureData);
+     return powSignatureData.recoverable_signature;
+   },
+ });
+        </code></pre>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">txOrBlock</code>: <code class="type-name">TransactionJson | BlockJson</code></dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">opts</code>: <code class="type-name">RecoverPublicKeyOptions</code></dd>
+             <dt>Returns</dt><dd><code class="type-name">Promise&lt;string[]&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:574</p>
+         <h5><code class="property-name">recoverPublicKey</code> (Static)</h5>
+        <pre><code class="language-typescript">Signer.recoverPublicKey(hash: Uint8Array, signature: Uint8Array, compressed?: boolean): string</code></pre>
+        <p>Function to recover the public key from hash and signature</p>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">hash</code>: <code class="type-name">Uint8Array</code> - hash sha256</dd>
+             <dd><code class="param-name">signature</code>: <code class="type-name">Uint8Array</code> - compact signature</dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">compressed</code>: <code class="type-name">boolean</code> (Default: true)</dd>
+             <dt>Returns</dt><dd><code class="type-name">string</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:389</p>
+         <h5><code class="property-name">recoverPublicKeys</code> (Static)</h5>
+        <pre><code class="language-typescript">Signer.recoverPublicKeys(txOrBlock: TransactionJson | BlockJson, opts?: RecoverPublicKeyOptions): Promise&lt;string[]&gt;</code></pre>
+        <p>Function to recover the publics keys from a signed transaction or block. The output format can be compressed (default) or uncompressed.</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+// Assuming 'tx' is a signed TransactionJson object
+const publicKeys = await Signer.recoverPublicKeys(tx);
+        </code></pre>
+        <p>If the signature data contains more data, like in the blocks for PoW consensus, use the "transformSignature" function to extract the signature.</p>
+        <h6>Example (PoW)</h6>
+        <pre><code class="language-javascript">
+ const powDescriptorJson = { /* ... PoW descriptor ... */ };
+ const serializer = new Serializer(powDescriptorJson, { defaultTypeName: "pow_signature_data" });
+
+ // Assuming 'block' is a BlockJson object with PoW signature
+ const publicKeys = await Signer.recoverPublicKeys(block, {
+   transformSignature: async (signatureData) => {
+     const powSignatureData = await serializer.deserialize(signatureData);
+     return powSignatureData.recoverable_signature;
+   },
+ });
+        </code></pre>
+         <dl>
+             <dt>Parameters</dt>
+             <dd><code class="param-name">txOrBlock</code>: <code class="type-name">TransactionJson | BlockJson</code></dd>
+             <dd><span class="optional-tag">(Optional)</span> <code class="param-name">opts</code>: <code class="type-name">RecoverPublicKeyOptions</code></dd>
+             <dt>Returns</dt><dd><code class="type-name">Promise&lt;string[]&gt;</code></dd>
+         </dl>
+         <p class="defined-in">Defined in Signer.ts:574</p> </section> <section id="class-transaction">
+        <h3>Class Transaction</h3>
+        <p>Class representing a Koinos transaction, allowing operations to be added and the transaction prepared, signed, and sent.</p>
+        <h4>Constructors</h4>
+        <h5>constructor</h5>
+        <pre><code class="language-typescript">
+new Transaction(c?: {
+  options?: TransactionOptions;
+  provider?: ProviderInterface;
+  signer?: SignerInterface;
+  transaction?: TransactionJson;
+}): Transaction
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><span class="optional-tag">(Optional)</span> <code>c: { options?: TransactionOptions; provider?: ProviderInterface; signer?: SignerInterface; transaction?: TransactionJson }</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Transaction</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:110</p>
+
+        <h4>Properties</h4>
+        <h5><code class="property-name">options</code></h5>
+        <p><code class="type-name">TransactionOptions</code></p>
+        <p>Transaction options</p>
+        <p class="defined-in">Defined in Transaction.ts:108</p>
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">provider</code></h5>
+        <p><code class="type-name">ProviderInterface</code></p>
+        <p>Provider to connect with the blockchain</p>
+        <p class="defined-in">Defined in Transaction.ts:93</p>
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">signer</code></h5>
+        <p><code class="type-name">SignerInterface</code></p>
+        <p>Signer interacting with the smart contracts</p>
+        <p class="defined-in">Defined in Transaction.ts:88</p>
+        <h5><code class="property-name">transaction</code></h5>
+        <p><code class="type-name">TransactionJson</code></p>
+        <p>Transaction object</p>
+        <p class="defined-in">Defined in Transaction.ts:98</p>
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">waitFunction</code></h5>
+        <p><code class="type-name">WaitFunction</code></p>
+        <p>Function to wait for the transaction to be mined</p>
+        <p class="defined-in">Defined in Transaction.ts:103</p>
+
+        <h4>Methods</h4>
+        <h5>adjustRcLimit</h5>
+        <pre><code class="language-typescript">adjustRcLimit(newRcLimit: string | number): void</code></pre>
+        <p>Update the rc limit with a new value and update the transaction ID accordingly. The signatures will be removed if the transaction ID changed</p>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">newRcLimit</code>: <code class="type-name">string | number</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">void</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:360</p>
+        <h5>prepare</h5>
+        <pre><code class="language-typescript">prepare(options?: TransactionOptions): Promise&lt;TransactionJson&gt;</code></pre>
+        <p>Function to prepare the transaction (set headers, merkle root, etc)</p>
+        <dl>
+            <dt>Parameters</dt><dd><span class="optional-tag">(Optional)</span> <code class="param-name">options</code>: <code class="type-name">TransactionOptions</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;TransactionJson&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:333</p>
+        <h5>pushOperation</h5>
+        <pre><code class="language-typescript">
+pushOperation(
+  input: OperationJson | { operation: OperationJson } | Promise&lt;{ operation: OperationJson }&gt; | (<T>(args?: any, opts?: ContractTransactionOptions) => Promise&lt;{ operation: OperationJson; ... }&gt;),
+  args?: unknown
+): Promise&lt;void&gt;
+        </code></pre>
+        <p>Function to push an operation to the transaction. It can be called in several ways.</p>
+        <h6>Example</h6>
+        <pre><code class="language-javascript">
+const koin = new Contract({ /* ... */ }).functions;
+const signer = Signer.fromSeed("my seed");
+const provider = new Provider(["https://api.koinos.io"]);
+signer.provider = provider;
+const tx = new Transaction({ signer });
+
+const transferArgs = {
+  from: "1NRYHBYr9qxYQAeVqfdSvyjJemRQ4qD3Mt",
+  to: "13UdKjYuzfBYbB6bGLQkUN9DJRFPCmG1mU",
+  value: "1000",
+};
+
+// Method 1 (using 2 arguments)
+await tx.pushOperation(koin.transfer, transferArgs);
+
+// Method 2 (using Contract function call promise)
+await tx.pushOperation(koin.transfer(transferArgs, { onlyOperation: true }));
+
+// Method 3 (using awaited Contract function call promise)
+await tx.pushOperation(await koin.transfer(transferArgs, { onlyOperation: true }));
+
+// Method 4 (using operation object)
+const { operation } = await koin.transfer(transferArgs, { onlyOperation: true });
+await tx.pushOperation(operation);
+
+// Method 5 (using object with operation property)
+const opObject = await koin.transfer(transferArgs, { onlyOperation: true });
+await tx.pushOperation(opObject);
+        </code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><code class="param-name">input</code>: <code class="type-name">OperationJson | { operation: OperationJson } | Promise&lt;{ operation: OperationJson }&gt; | Function</code></dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">args</code>: <code class="type-name">unknown</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;void&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:195</p>
+        <h5>send</h5>
+        <pre><code class="language-typescript">send(options?: SendTransactionOptions): Promise&lt;TransactionReceipt&gt;</code></pre>
+        <p>Function to broadcast the transaction</p>
+        <dl>
+            <dt>Parameters</dt><dd><span class="optional-tag">(Optional)</span> <code class="param-name">options</code>: <code class="type-name">SendTransactionOptions</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;TransactionReceipt&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:386</p>
+        <h5>sign</h5>
+        <pre><code class="language-typescript">sign(abis?: Record&lt;string, Abi&gt;): Promise&lt;TransactionJson&gt;</code></pre>
+        <p>Function to sign the transaction</p>
+        <dl>
+            <dt>Parameters</dt><dd><span class="optional-tag">(Optional)</span> <code class="param-name">abis</code>: <code class="type-name">Record&lt;string, Abi&gt;</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;TransactionJson&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:374</p>
+        <h5>wait</h5>
+        <pre><code class="language-typescript">wait(type?: "byBlock" | "byTransactionId", timeout?: number): Promise&lt;{ blockId: string; blockNumber?: number }&gt;</code></pre>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">type</code>: <code class="type-name">"byBlock" | "byTransactionId"</code></dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">timeout</code>: <code class="type-name">number</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ blockId: string; blockNumber?: number }&gt;</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:420</p>
+
+        <h4>Static Methods</h4>
+        <h5><code class="property-name">computeTransactionId</code> (Static)</h5>
+        <pre><code class="language-typescript">Transaction.computeTransactionId(txHeader: TransactionHeaderJson): string</code></pre>
+        <dl>
+            <dt>Parameters</dt><dd><code class="param-name">txHeader</code>: <code class="type-name">TransactionHeaderJson</code></dd>
+            <dt>Returns</dt><dd><code class="type-name">string</code></dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:225</p>
+        <h5><code class="property-name">prepareTransaction</code> (Static)</h5>
+        <pre><code class="language-typescript">Transaction.prepareTransaction(tx: TransactionJson, provider?: ProviderInterface, payer?: string): Promise&lt;TransactionJson&gt;</code></pre>
+        <p>Function to prepare a transaction</p>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><code class="param-name">tx</code>: <code class="type-name">TransactionJson</code> - Do not set the nonce to get it from the blockchain using the provider. The rc_limit is 1e8 by default.</dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">provider</code>: <code class="type-name">ProviderInterface</code> - Provider</dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">payer</code>: <code class="type-name">string</code> - payer to be used in case it is not defined in the transaction</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;TransactionJson&gt;</code> - A prepared transaction.</dd>
+        </dl>
+        <p class="defined-in">Defined in Transaction.ts:246</p>
+
+    </section> </section> <section id="interfaces">
+    <h2>Interfaces</h2>
+
+    <section id="interface-abi">
+        <h3>Interface Abi</h3>
+        <p>Application Binary Interface (ABI)</p>
+        <p>ABIs are composed of 3 elements: methods, events, and types.</p>
+        <ul>
+            <li>The <strong>methods</strong> define the names of the entries of the smart contract, the corresponding endpoints and the name of the types used.</li>
+            <li>The <strong>events</strong> define possible events triggered by the smart contract and the name of the types used.</li>
+            <li>The <strong>types</strong> contain the description to serialize and deserialize data using proto buffers. It is used to encode/decode the methods and events. These types can be provided in binary format or json format (<code>koilib_types</code>).</li>
+        </ul>
+        <p>To generate the types is necessary to use the dependency <code>protobufjs</code>. The following example shows how to generate the protobuf descriptor from a <code>.proto</code> file.</p>
+        <pre><code class="language-javascript">
+const fs = require("fs");
+const pbjs = require("protobufjs/cli/pbjs");
+
+pbjs.main(
+  ["--target", "json", "./token.proto"], // Your proto file path
+  (err, output) => {
+    if (err) throw err;
+    fs.writeFileSync("./token-proto.json", output); // Output JSON descriptor
+  }
+);
+        </code></pre>
+        <p>Then this descriptor can be loaded to define the ABI:</p>
+        <pre><code class="language-javascript">
+const tokenJson = require("./token-proto.json"); // Load the generated descriptor
+
+const abiToken = {
+  methods: {
+    balanceOf: {
+      entry_point: 0x15619248,
+      argument: "balance_of_arguments", // Type name from proto
+      return: "balance_of_result",      // Type name from proto
+      read_only: true,
+      default_output: { value: "0" },    // Optional default if contract returns empty
+    },
+    transfer: {
+      entry_point: 0x62efa292,
+      argument: "transfer_arguments",
+      return: "transfer_result",
+    },
+    mint: {
+      entry_point: 0xc2f82bdc,
+      argument: "mint_arguments",
+      return: "mint_result",
+    },
+  },
+  events: {
+    'koinos.contracts.token.mint_event': { // Event name (can be custom or proto path)
+      type: "mint_arguments"              // Type name for event data
+    },
+    'transfer_event': { // Example custom event name
+      type: "transfer_event_data" // Assumes 'transfer_event_data' type exists in proto
+    }
+  },
+  koilib_types: tokenJson, // The loaded JSON descriptor
+};
+        </code></pre>
+        <p>Note that this example uses "default_output" for the method "balanceOf". This is used when the smart contract returns an empty response (for instance when there are no balance records for a specific address) and you require a default output in such cases.</p>
+
+        <h4>Definition of events</h4>
+        <p>There are 2 ways to define events in koinos:</p>
+        <ol>
+            <li><strong>Event names as protobuffer names:</strong> The name of the event directly matches the fully qualified protobuffer message name. In this case, there is no need to define the event explicitly in the ABI's <code>events</code> section.</li>
+            <li><strong>Custom event names:</strong> The contract emits an event with a custom name string. This custom name must then be mapped to its corresponding protobuffer message type within the ABI's <code>events</code> section. This allows reusing protobuffer message types for different events.</li>
+        </ol>
+
+        <h4>Hierarchy</h4>
+        <p>Abi</p>
+        <p class="defined-in">Defined in interface.ts:161</p>
+
+        <h4>INDEX</h4>
+        <h5>Properties</h5>
+        <ul>
+            <li>events?</li>
+            <li>koilib_types?</li>
+            <li>methods</li>
+            <li>types?</li>
+        </ul>
+
+        <h4>Properties</h4>
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">events</code></h5>
+        <p><code class="type-name">{ [x: string]: { argument?: string; description?: string; type?: string } }</code></p>
+        <p>Definition of events</p>
+        <h6>Type declaration</h6>
+        <pre><code class="language-typescript">
+[x: string]: {
+  argument?: string; // Deprecated, use type instead
+  description?: string; // Description of the event
+  type?: string; // Protobuffer type for event
+}
+        </code></pre>
+        <p class="defined-in">Defined in interface.ts:201</p>
+
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">koilib_types</code></h5>
+        <p><code class="type-name">INamespace</code></p>
+        <p>Protobuffers descriptor in JSON format. See <a href="https://www.npmjs.com/package/protobufjs#using-json-descriptors" target="_blank" rel="noopener noreferrer">protobufjs documentation</a></p>
+        <p class="defined-in">Defined in interface.ts:196</p>
+
+        <h5><code class="property-name">methods</code></h5>
+        <p><code class="type-name">{ [x: string]: { argument?: string; default_output?: unknown; description?: string; entry_point: number; preformat_argument?: ((arg: unknown) => Record<string, unknown>); preformat_return?: ((output: Record<string, unknown>) => unknown); read_only?: boolean; return?: string } }</code></p>
+        <h6>Type declaration</h6>
+        <pre><code class="language-typescript">
+[x: string]: {
+  argument?: string; // Protobuffer type for argument
+  default_output?: unknown; // Default value when the output is undefined
+  description?: string; // Description of the method
+  entry_point: number; // Entry point ID
+  preformat_argument?: (arg: unknown) => Record&lt;string, unknown&gt;; // Optional function to preformat the argument
+  preformat_return?: (output: Record&lt;string, unknown&gt;) => unknown; // Optional function to preformat the returned value
+  read_only?: boolean; // Boolean to differentiate write methods (using transactions) from read methods (query the contract)
+  return?: string; // Protobuffer type for returned value
+}
+        </code></pre>
+        <p class="defined-in">Defined in interface.ts:162</p>
+
+        <h5><span class="optional-tag">(Optional)</span> <code class="property-name">types</code></h5>
+        <p><code class="type-name">string</code></p>
+        <p>Protobuffers descriptor in binary format encoded in base64url.</p>
+        <p class="defined-in">Defined in interface.ts:XXX</p> </section> <section id="interface-blockreceipt">
+        <h3>Interface BlockReceipt</h3>
+        <div class="note">Note: Interface name inferred from property names.</div>
+        <p>Represents the receipt generated when a block is produced.</p>
+        <h4>Properties</h4>
+        <dl>
+          <dt><code class="property-name">compute_bandwidth_charged</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:796</dd>
+          <dt><code class="property-name">compute_bandwidth_used</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:793</dd>
+          <dt><code class="property-name">disk_storage_charged</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:794</dd>
+          <dt><code class="property-name">disk_storage_used</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:791</dd>
+          <dt><code class="property-name">events</code>: <code class="type-name">EventData[]</code></dt><dd class="defined-in">Defined in interface.ts:797</dd>
+          <dt><code class="property-name">height</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:790</dd>
+          <dt><code class="property-name">id</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:789</dd>
+          <dt><code class="property-name">network_bandwidth_charged</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:795</dd>
+          <dt><code class="property-name">network_bandwidth_used</code>: <code class="type-name">string</code></dt><dd class="defined-in">Defined in interface.ts:792</dd>
+          <dt><code class="property-name">state_delta_entries</code>: <code class="type-name">StateDeltaEntry[]</code></dt><dd class="defined-in">Defined in interface.ts:799</dd>
+          <dt><code class="property-name">transaction_receipts</code>: <code class="type-name">TransactionReceipt[]</code></dt><dd class="defined-in">Defined in interface.ts:798</dd>
+        </dl>
+    </section> <section id="interface-callcontractoperationjson">
+         <h3>Interface CallContractOperationJson</h3>
+         <div class="note">Note: Interface name inferred from property names. Represents the structure within <code>OperationJson</code> for a contract call.</div>
+         <p>Defines the structure for a smart contract call operation.</p>
+         <h4>Properties</h4>
+        <dl>
+          <dt><code class="property-name">args</code>: <code class="type-name">string</code></dt><dd>Serialized arguments for the contract call (typically base64url encoded protobuf bytes).</dd><dd class="defined-in">Defined in interface.ts:601</dd>
+          <dt><code class="property-name">contract_id</code>: <code class="type-name">string</code></dt><dd>The address of the contract to call.</dd><dd class="defined-in">Defined in interface.ts:597</dd>
+          <dt><code class="property-name">entry_point</code>: <code class="type-name">number</code></dt><dd>The numerical ID of the contract function (entry point) to call.</dd><dd class="defined-in">Defined in interface.ts:599</dd>
+        </dl>
+     </section> <section id="interface-contractfunctionid">
+        <h3>Interface ContractFunctionId</h3>
+        <div class="note">Note: Interface name inferred due to limited context provided. Represents the identification part of a contract function.</div>
+        <p>Identifies a specific function within a smart contract.</p>
+         <h4>Properties</h4>
+         <dl>
+            <dt><code class="property-name">contract_id</code>: <code class="type-name">string</code></dt><dd>The address of the contract.</dd><dd class="defined-in">Defined in interface.ts:540</dd>
+            <dt><code class="property-name">entry_point</code>: <code class="type-name">number</code></dt><dd>The numerical ID of the contract function (entry point).</dd><dd class="defined-in">Defined in interface.ts:XXX</dd> </dl>
+     </section> <section id="interface-decodedeventdata">
+         <h3>Interface DecodedEventData</h3>
+         <p>Represents a decoded event, extending the basic <code>EventData</code> with parsed arguments.</p>
+        <h4>Properties</h4>
+        <dl>
+            <dt><code class="property-name">args</code>: <code class="type-name">Record&lt;string, unknown&gt;</code></dt><dd>The decoded event arguments as a key-value object.</dd><dd class="defined-in">Defined in interface.ts:759</dd>
+            <dt><code class="property-name">data</code>: <code class="type-name">string</code></dt><dd>Raw event data (typically base64url encoded protobuf bytes).</dd><dd class="defined-in">Inherited from EventData.data (interface.ts:754)</dd>
+            <dt><code class="property-name">impacted</code>: <code class="type-name">string[]</code></dt><dd>List of addresses impacted by the event.</dd><dd class="defined-in">Inherited from EventData.impacted (interface.ts:755)</dd>
+            <dt><code class="property-name">name</code>: <code class="type-name">string</code></dt><dd>Name of the event.</dd><dd class="defined-in">Inherited from EventData.name (interface.ts:753)</dd>
+            <dt><code class="property-name">sequence</code>: <code class="type-name">number</code></dt><dd>Sequence number of the event within the transaction.</dd><dd class="defined-in">Inherited from EventData.sequence (interface.ts:751)</dd>
+            <dt><code class="property-name">source</code>: <code class="type-name">string</code></dt><dd>Address of the contract that emitted the event.</dd><dd class="defined-in">Inherited from EventData.source (interface.ts:XXX)</dd> </dl>
+    </section> <section id="interface-dictionarygenesisdata">
+        <h3>Interface DictionaryGenesisData</h3>
+         <p>Defines metadata for handling dictionary keys, particularly for genesis data or serialization configuration.</p>
+        <h4>Hierarchy</h4>
+        <p>DictionaryGenesisData</p>
+        <h4>Indexable</h4>
+        <pre><code class="language-typescript">[x: string]: {
+  alias?: string;
+  bytesConversion?: boolean;
+  isAddress?: boolean;
+  serializer?: Serializer;
+  typeName?: string;
+}</code></pre>
+        <h5>Value Properties</h5>
+        <dl>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">alias</code>: <code class="type-name">string</code></dt><dd>alternative name for the key name</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">bytesConversion</code>: <code class="type-name">boolean</code></dt><dd>preformat bytes for base64url, base58 or hex string</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">isAddress</code>: <code class="type-name">boolean</code></dt><dd>boolean defining if it's an address</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">serializer</code>: <code class="type-name">Serializer</code></dt><dd>custom serializer</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">typeName</code>: <code class="type-name">string</code></dt><dd>type name for serialization</dd>
+        </dl>
+    </section> <section id="interface-signerinterface">
+         <h3>Interface SignerInterface</h3>
+         <p>Defines the standard methods required for a Signer object in Koilib.</p>
+        <h4>Properties / Methods</h4>
+        <dl>
+            <dt><code class="property-name">getAddress</code>: <code class="type-name">((compressed?: boolean) => string)</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:32</dd>
+
+            <dt><code class="property-name">prepareBlock</code>: <code class="type-name">((block: BlockJson) => Promise&lt;BlockJson&gt;)</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:50</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">provider</code>: <code class="type-name">ProviderInterface</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:31</dd>
+
+            <dt><code class="property-name">sendTransaction</code>: <code class="type-name">((transaction: TransactionJson | TransactionJsonWait, options?: SendTransactionOptions) => Promise&lt;{ receipt: TransactionReceipt; transaction: TransactionJsonWait }&gt;)</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:41</dd>
+
+            <dt><code class="property-name">signBlock</code>: <code class="type-name">((block: BlockJson) => Promise&lt;BlockJson&gt;)</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:51</dd>
+
+            <dt><code class="property-name">signHash</code>: <code class="type-name">((hash: Uint8Array) => Promise&lt;Uint8Array&gt;)</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:33</dd>
+
+            <dt><code class="property-name">signMessage</code>: <code class="type-name">((message: string | Uint8Array) => Promise&lt;Uint8Array&gt;)</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:34</dd>
+
+            <dt><code class="property-name">signTransaction</code>: <code class="type-name">((transaction: TransactionJson | TransactionJsonWait, abis?: Record&lt;string, Abi&gt;) => Promise&lt;TransactionJson&gt;)</code></dt>
+            <dd class="defined-in">Defined in Signer.ts:37</dd>
+        </dl>
+     </section> <section id="interface-providerinterface">
+        <h3>Interface ProviderInterface</h3>
+        <p>Defines the standard methods required for a Provider object in Koilib.</p>
+        <h4>Properties / Methods</h4>
+        <dl>
+            <dt><code class="property-name">call</code>: <code class="type-name">(&lt;T&gt;(method: string, params: unknown) => Promise&lt;T&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:19</dd>
+            <dt><code class="property-name">getAccountRc</code>: <code class="type-name">((account: string) => Promise&lt;string&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:25</dd>
+            <dt><code class="property-name">getBlock</code>: <code class="type-name">((height: number, opts?: GetBlockOptions) => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:63</dd>
+            <dt><code class="property-name">getBlocks</code>: <code class="type-name">((height: number, numBlocks?: number, ...) => Promise&lt;{...}[]&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:50</dd>
+            <dt><code class="property-name">getBlocksById</code>: <code class="type-name">((blockIds: string[], opts?: GetBlockOptions) => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:32</dd>
+            <dt><code class="property-name">getChainId</code>: <code class="type-name">(() => Promise&lt;string&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:49</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">getForkHeads</code>: <code class="type-name">(() => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:100</dd>
+            <dt><code class="property-name">getHeadInfo</code>: <code class="type-name">(() => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:43</dd>
+            <dt><code class="property-name">getNextNonce</code>: <code class="type-name">((account: string) => Promise&lt;string&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:24</dd>
+            <dt><code class="property-name">getNonce</code>: <code class="type-name">((account: string, deserialize?: boolean) => Promise&lt;string | number&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:20</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">getResourceLimits</code>: <code class="type-name">(() => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:104</dd>
+            <dt><code class="property-name">getTransactionsById</code>: <code class="type-name">((transactionIds: string[]) => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:26</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">invokeGetContractAddress</code>: <code class="type-name">((name: string) => Promise&lt;undefined | {...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:126</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">invokeGetContractMetadata</code>: <code class="type-name">((contractId: string) => Promise&lt;undefined | {...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:114</dd>
+            <dt><code class="property-name">invokeSystemCall</code>: <code class="type-name">(&lt;T&gt;(serializer: Serializer, ...) => Promise&lt;undefined | T&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:91</dd>
+            <dt><code class="property-name">readContract</code>: <code class="type-name">((operation: CallContractOperationJson) => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:87</dd>
+            <dt><code class="property-name">sendTransaction</code>: <code class="type-name">((transaction: TransactionJson | TransactionJsonWait, ...) => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:80</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">submitBlock</code>: <code class="type-name">((block: BlockJson) => Promise&lt;Record&lt;string, never&gt;&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:99</dd>
+            <dt><code class="property-name">wait</code>: <code class="type-name">((txId: string, type?: "byBlock" | "byTransactionId", ...) => Promise&lt;{...}&gt;)</code></dt><dd class="defined-in">Defined in Provider.ts:XXX</dd> </dl>
+     </section> <section id="interface-transactionoptions">
+        <h3>Interface TransactionOptions</h3>
+        <p>Defines options available when preparing or sending a transaction.</p>
+        <h4>Properties</h4>
+        <dl>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">abis</code>: <code class="type-name">Record&lt;string, Abi&gt;</code></dt>
+            <dd>Collection of Abis so that the receiver can parse the operations in the transaction.</dd>
+            <dd class="defined-in">Defined in interface.ts:252</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">beforeSend</code>: <code class="type-name">(tx: TransactionJson, options?: SendTransactionOptions) => Promise&lt;void&gt;</code></dt>
+            <dd>Function to be called before sending a transaction. Useful for multisignatures.</dd>
+             <h6>Example</h6>
+            <pre><code class="language-javascript">
+const signer2 = Signer.fromSeed("signer2");
+const signer3 = Signer.fromSeed("signer3");
+
+const addMoreSignatures = async (tx, opts) => {
+  await signer2.signTransaction(tx);
+  await signer3.signTransaction(tx);
+};
+
+// Usage (e.g. in Contract function call options)
+const { transaction } = await someContract.functions.someMethod(args, {
+  payer: signer2.getAddress(), // Payer might differ from initiator
+  beforeSend: addMoreSignatures,
+});
+            </code></pre>
+            <dd class="defined-in">Defined in interface.ts:291</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">broadcast</code>: <code class="type-name">boolean</code></dt>
+            <dd>Boolean to define if the transaction should be broadcasted (Default: true). Set to false for testing/event checking without committing to the mempool.</dd>
+            <dd class="defined-in">Defined in interface.ts:246</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">chainId</code>: <code class="type-name">string</code></dt>
+            <dd>Chain ID. If not set, it will be fetched from the provider.</dd>
+            <dd class="defined-in">Defined in interface.ts:304</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">nextOperations</code>: <code class="type-name">OperationJson[]</code></dt>
+            <dd>List of extra operations to be included after the primary operation(s) in the transaction.</dd>
+            <dd class="defined-in">Defined in interface.ts:374</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">nonce</code>: <code class="type-name">string</code></dt>
+            <dd>Transaction nonce (base64url encoded). Can be payee's or payer's nonce. If not set, it will be fetched based on payer/payee configuration.</dd>
+            <dd class="defined-in">Defined in interface.ts:330</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">onlyOperation</code>: <code class="type-name">boolean</code></dt>
+            <dd>Boolean to indicate if only the operation object should be generated, without preparing/sending a transaction (Default: false).</dd>
+            <dd class="defined-in">Defined in interface.ts:360</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">payee</code>: <code class="type-name">string</code></dt>
+            <dd>Address whose nonce will be consumed/incremented. If not set, the payer's nonce is used.</dd>
+            <dd class="defined-in">Defined in interface.ts:349</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">payer</code>: <code class="type-name">string</code></dt>
+            <dd>Address that will pay the RC cost. If not set, the signer's address is used.</dd>
+            <dd class="defined-in">Defined in interface.ts:341</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">previousOperations</code>: <code class="type-name">OperationJson[]</code></dt>
+            <dd>List of extra operations to be included before the primary operation(s) in the transaction.</dd>
+            <dd class="defined-in">Defined in interface.ts:367</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">rcLimit</code>: <code class="type-name">string | number</code></dt>
+            <dd>Maximum RC (mana) to be spent. If not set, it will be fetched from the payer's current mana.</dd>
+            <dd class="defined-in">Defined in interface.ts:313</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">sendAbis</code>: <code class="type-name">boolean</code></dt>
+            <dd>Boolean to define if ABIs should be shared with the signer for decoding (Default: true).</dd>
+            <dd class="defined-in">Defined in interface.ts:261</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">sendTransaction</code>: <code class="type-name">boolean</code></dt>
+            <dd>Boolean to define if the transaction should be signed and sent to the RPC node (Default: true).</dd>
+            <dd class="defined-in">Defined in interface.ts:391</dd>
+
+             <dt><span class="optional-tag">(Optional)</span> <code class="property-name">signTransaction</code>: <code class="type-name">boolean</code></dt>
+             <dd>Boolean to define if the transaction should be signed (Default: true).</dd>
+             <dd class="defined-in">Defined in interface.ts:XXX</dd> </dl>
+     </section> <section id="interface-contracttransactionoptions">
+        <h3>Interface ContractTransactionOptions</h3>
+        <p>Defines options available when interacting with Contract class methods, combining general transaction options with contract-specific ones.</p>
+        <h4>Properties</h4>
+        <p>Includes all properties from <a href="#interface-transactionoptions">TransactionOptions</a>, plus:</p>
+        <dl>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">abi</code>: <code class="type-name">string</code></dt>
+            <dd>ABI string to be stored in the koinos-contract-meta-store during deployment.</dd>
+            <dd class="defined-in">Defined in interface.ts:403</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">authorizesCallContract</code>: <code class="type-name">boolean</code></dt>
+            <dd>Set true if the contract implements "authorize" and can authorize calling other contracts.</dd>
+            <dd class="defined-in">Defined in interface.ts:412</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">authorizesTransactionApplication</code>: <code class="type-name">boolean</code></dt>
+            <dd>Set true if the contract implements "authorize" and can authorize paying mana or using its nonce for transactions.</dd>
+            <dd class="defined-in">Defined in interface.ts:422</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">authorizesUploadContract</code>: <code class="type-name">boolean</code></dt>
+            <dd>Set true if the contract implements "authorize" and can authorize its own upgrades.</dd>
+            <dd class="defined-in">Defined in interface.ts:430</dd>
+
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">abis</code>: <code class="type-name">Record&lt;string, Abi&gt;</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:252</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">beforeSend</code>: <code class="type-name">(tx: TransactionJson, options?: SendTransactionOptions) => Promise&lt;void&gt;</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:291</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">broadcast</code>: <code class="type-name">boolean</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:246</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">chainId</code>: <code class="type-name">string</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:304</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">nextOperations</code>: <code class="type-name">OperationJson[]</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:374</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">nonce</code>: <code class="type-name">string</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:330</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">onlyOperation</code>: <code class="type-name">boolean</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:360</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">payee</code>: <code class="type-name">string</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:349</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">payer</code>: <code class="type-name">string</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:341</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">previousOperations</code>: <code class="type-name">OperationJson[]</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:367</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">rcLimit</code>: <code class="type-name">string | number</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:313</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">sendAbis</code>: <code class="type-name">boolean</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:261</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">sendTransaction</code>: <code class="type-name">boolean</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:391</dd>
+            <dt><span class="optional-tag">(Optional)</span> <code class="property-name">signTransaction</code>: <code class="type-name">boolean</code></dt><dd>(Inherited)</dd><dd class="defined-in">Defined in interface.ts:XXX</dd> </dl>
+    </section> </section> <section id="type-aliases">
+    <h2>Type Aliases</h2>
+
+    <section id="typealias-waitfunction">
+        <h3>Type alias WaitFunction</h3>
+        <pre><code class="language-typescript">
+type WaitFunction = (
+  type?: "byBlock" | "byTransactionId",
+  timeout?: number
+) => Promise&lt;{
+  blockId: string;
+  blockNumber?: number;
+}&gt;
+        </code></pre>
+        <p>Function signature for waiting for a transaction to be mined. This function type is often returned after sending a transaction (e.g., via <code>Provider.sendTransaction</code> or as part of the result from contract function calls).</p>
+        <dl>
+            <dt>Parameters</dt>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">type</code>: <code class="type-name">"byBlock" | "byTransactionId"</code> (Default: "byTransactionId")<br/>Determines the method used for waiting: polling blocks or querying the transaction store.</dd>
+            <dd><span class="optional-tag">(Optional)</span> <code class="param-name">timeout</code>: <code class="type-name">number</code> (Default: 15000)<br/>Timeout in milliseconds.</dd>
+            <dt>Returns</dt><dd><code class="type-name">Promise&lt;{ blockId: string; blockNumber?: number }&gt;</code></dd>
+        </dl>
+    </section> </section> <section id="namespaces">
+    <h2>Namespaces</h2>
+
+    <section id="namespace-utils">
+        <h3>Namespace utils</h3>
+        <p class="defined-in">Defined in indexUtils.ts:1</p>
+        <div class="note">Note: Details for the members of the 'utils' namespace were not provided beyond this index.</div>
+
+        <h4>INDEX</h4>
+        <h5>Variables</h5>
+        <ul>
+            <li>ChainTypes</li>
+            <li>nftAbi</li>
+            <li>nicknamesAbi</li>
+            <li>tokenAbi</li>
+        </ul>
+        <h5>Functions</h5>
+        <ul>
+            <li>bitcoinAddress</li>
+            <li>bitcoinDecode</li>
+            <li>bitcoinEncode</li>
+            <li>btypeDecode</li>
+            <li>btypeDecodeValue</li>
+            <li>btypeEncode</li>
+            <li>btypeEncodeValue</li>
+            <li>calculateMerkleRoot</li>
+            <li>decodeBase58</li>
+            <li>decodeBase64</li>
+            <li>decodeBase64url</li>
+            <li>decodeGenesisData</li>
+            <li>encodeBase58</li>
+            <li>encodeBase64</li>
+            <li>encodeBase64url</li>
+            <li>encodeGenesisData</li>
+            <li>formatUnits</li>
+            <li>isChecksum</li>
+            <li>isChecksumAddress</li>
+            <li>isChecksumWif</li>
+            <li>multihash</li>
+            <li>parseUnits</li>
+            <li>toHexString</li>
+            <li>toUint8Array</li>
+        </ul>
+        </section> </section> </body>
+</html>
