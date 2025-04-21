@@ -2,32 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Contracts</title>
+  <title>LLM Docs for Koinos Blockchain</title>
 </head>
 <body>
-  <h1>Koinos Smart Contracts</h1>
+  <h1>LLM Docs for Koinos Blockchain</h1>
 
   <p>
-    This section contains documentation that's optimized for AI tools like large language models (LLMs).
-    If you're using <strong>Cursor</strong> as your development environment, you can easily integrate this
-    doc into your workflow.
+    Welcome to your AI‑optimized documentation hub for the Koinos blockchain. Each page here is structured
+    to give large language models (LLMs) like Cursor or ChatGPT exactly the
+    context they need to help you build on Koinos.
   </p>
 
-  <h2>💡 Best Practice: Cursor Integration</h2>
-
-  <p>Just save your long-form smart contract documentation as a markdown file in your repository:</p>
-
+  <h2>💡 How to Integrate with Cursor</h2>
+  <p>
+    1. Save your long‑form docs as Markdown in your repo, e.g.:
+  </p>
   <pre><code class="language-bash">
-📄 Save your long doc as:
-
 /docs/koinos-smart-contract.md
   </code></pre>
-
-  <p>Then, configure <code>.cursor.json</code> to instruct the AI how to use it:</p>
-
+  <p>
+    2. Add a rule in <code>.cursor.json</code> so Cursor knows how to use it:
+  </p>
   <pre><code class="language-json">
-✍️ Add a rule in .cursor.json:
-
 {
   "rules": [
     {
@@ -38,8 +34,28 @@
 }
   </code></pre>
 
-  <p>This setup ensures Cursor can assist you effectively based on your project-specific smart contract guide.</p>
+  <h2>📂 Pages</h2>
+  <ul>
+    <li><a href="SmartContracts.html">Smart Contracts Guide</a></li>
+    <li><a href="koilib.html">Koilib Reference</a></li>
+  </ul>
 
-  <a href="index.html">← Back to Home</a>
+  <h2>📌 TODO</h2>
+  <p>
+    The Koilib Reference page still needs to include the
+    <a href="https://joticajulian.github.io/koilib/modules/utils.html" target="_blank">
+    koilib utils docs</a>.
+  </p>
+
+  <footer>
+    <hr>
+    <p>Key Koinos Resources:</p>
+    <ul>
+      <li><a href="https://koinos.io" target="_blank">Official Website</a></li>
+      <li><a href="https://docs.koinos.io" target="_blank">Koinos Docs</a></li>
+      <li><a href="https://github.com/koinos" target="_blank">GitHub</a></li>
+      <li><a href="https://twitter.com/KoinosNetwork" target="_blank">Twitter @KoinosNetwork</a></li>
+    </ul>
+  </footer>
 </body>
 </html>
