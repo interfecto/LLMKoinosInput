@@ -826,6 +826,1654 @@ value:6
     <p>
         With this comprehensive knowledge, you are now equipped to develop, deploy, and manage smart contracts on Koinos. The feeless Mana model, upgradeability, and familiar development process (especially using AssemblyScript) make Koinos an exciting platform for decentralized applications. Happy coding on Koinos!
     </p>
+<h1>Koinos Contract Standards (KCS)</h1>
+
+<section id="kcs-1">
+    <h2>KCS 1: Token Standard</h2>
+    <p><strong class="status">Status:</strong> Final</p>
+    <p class="authors"><strong>Authors:</strong> Koinos Group (<a href="https://github.com/koinos" target="_blank" rel="noopener noreferrer">https://github.com/koinos</a>), Julián González (<a href="https://github.com/joticajulian" target="_blank" rel="noopener noreferrer">https://github.com/joticajulian</a>)</p>
+
+    <p>A contract standard for tokens on the Koinos blockchain.</p>
+
+    <h3>Long Description</h3>
+    <p>This standard is to define how tokens can work on the Koinos blockchain.</p>
+    <p>Tokens using this standard may include additional utility and functionality beyond this standard in their smart contract logic. This document defines the base functionality in order to adhere to KCS-1 standard.</p>
+
+    <h3>Why</h3>
+    <p>This is the first standard for token contracts on the Koinos blockchain. The most representative examples are KOIN and VHP contracts. Every smart contract platform requires fungible tokens at a bare minimum which allows users to to utilize the decentralized ledger and trade value amongst themselves.</p>
+
+    <h3>Specification</h3>
+    <p>At a minimum, a token contract using this standard will include the following methods and unique data:</p>
+
+    <h4>Read methods</h4>
+
+    <h5>name</h5>
+    <p>Returns the name of the token. No arguments required.</p>
+    <p>Protobuf definition</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message name_arguments {}
+
+// Result
+message name_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>symbol</h5>
+    <p>Returns the symbol for the token. No arguments required.</p>
+    <p>Protobuf definition</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message symbol_arguments {}
+
+// Results
+message symbol_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>decimals</h5>
+    <p>Returns the decimal precision of the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message decimals_arguments {}
+
+// Result
+message decimals_result {
+    uint32 value = 1;
+}
+    </code></pre>
+
+    <h5>total_supply</h5>
+    <p>Returns the total supply of the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message total_supply_arguments {}
+
+
+// Result
+message total_supply_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>balance_of</h5>
+    <p>Returns how many tokens a specific address holds.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message balance_of_arguments {
+    bytes owner = 1 [(btype) = ADDRESS];
+}
+
+// Result
+message balance_of_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h4>Write methods</h4>
+
+    <h5>mint</h5>
+    <p>Used by the contract owner to initially mint the token to a given address.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message mint_arguments {
+    bytes to = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+
+// Result
+message mint_result {}
+    </code></pre>
+    <p>The method should emit a <code>mint_event</code> upon success. The event should indicate the recipient of the mint as an impacted account.</p>
+    <pre><code class="language-protobuf">
+// Event
+message mint_event {
+    bytes to = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>transfer</h5>
+    <p>This will transfer tokens to a new owner. The authorization is checked with the native <code>check_authority</code> system call. It is also authorized if the contract of <code>from</code> is the one that called the token contract.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message transfer_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+}
+
+// Result
+message transfer_result {}
+    </code></pre>
+    <p>The transfer event should emit a <code>transfer_event</code> upon success. The event should indicate the receiver and then the sender as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message transfer_event {
+    bytes from = 1 [(btype) = ADDRESS];
+    bytes to = 2 [(btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>burn (optional)</h5>
+    <p>Burns an amount of token from an address. The authorization is checked with the native <code>check_authority</code> system call. It is also authorized if the contract of <code>from</code> is the one that called the token contract.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message burn_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+
+// Result
+message burn_result {}
+    </code></pre>
+    <p>The method should emit a <code>burn_event</code> upon success. The event should indicate the source as an impacted account.</p>
+    <pre><code class="language-protobuf">
+// Event
+message burn_event {
+    bytes from = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h3>Computation of entry points</h3>
+    <p>On the Koinos blockchain, each contract function has an <em>entry point</em> associated which should be referenced inside the transaction when interacting with the contract. This <em>entry point</em> is used to identify the function, not the name of the function.</p>
+    <p>The current standard uses the following process to define the entry point:</p>
+    <ol>
+        <li>Compute the sha256 of the name function.</li>
+        <li>Take the first 4 bytes of the hash.</li>
+        <li>Convert these bytes into a number.</li>
+    </ol>
+    <p>For instance, the sha256 of <code>transfer</code> is <code>27f576cafbb263ed44be8bd094f66114da26877706f96c4c31d5a97ffebf2e29</code>. Then the <em>entry point</em> for this function is defined as 0x27f576ca</p>
+
+    <h3>Expected Unique Data and Types</h3>
+    <p>With the proposed implementation developers would set the following constants before uploading their token contract:</p>
+    <ul>
+        <li><code>NAME</code> - a string for the human readable name of the token.</li>
+        <li><code>SYMBOL</code> - a string for the symbol or ticker used for the token (all uppercase).</li>
+        <li><code>DECIMALS</code> - a u32 for the decimal precision of the token.</li>
+    </ul>
+
+    <h3>Check authority system call</h3>
+    <p>The koinos framework comes with an innovative system for authorizations, where users can upload personal contracts that will be called to resolve authorizations. In order to take advantage of this feature, the token contract should call the <code>check_authority</code> system call. And it works in this way:</p>
+    <ol>
+        <li>If the user has a smart contract, and he has configured it with an <code>authorize</code> function, then this smart contract will be called to resolve the authority.</li>
+        <li>If the user doesn't have a smart contract, then the blockchain will search if the user signed the transaction and in that case approve the authorization.</li>
+    </ol>
+    <p>This is a flow chart of the system call:</p>
+    <pre><code class="language-mermaid">
+flowchart TD
+    ini[TOKEN CONTRACT\nTransfer from Alice to Bob] -->|Does Alice authorize\n this operation?| A
+    A[check_authority\nsystem call] --> B
+    B{Has Alice a\n contract for\n authorizations?} -->|YES\nDo you authorize\nthis operation?| C
+    C["Call Alice's contract"] -->|true/false| D
+    B --> |NO| E
+    E{Transaction signed\nby Alice?} --> |YES\ntrue|D
+    E --> |NO\nfalse|D[Return response to\n TOKEN CONTRACT]
+    </code></pre>
+
+    <h3>Implementation</h3>
+    <p>There are some implementations of this token contract.</p>
+    <ul>
+        <li><a href="https://github.com/roaminro/koinos-sdk-as-examples/blob/4e68844d41a53bcf1f5a43056d9a638b544d816c/token/assembly/Token.ts" target="_blank" rel="noopener noreferrer">Token contract</a></li>
+        <li><a href="https://github.com/koinos/koinos-contracts-cpp/blob/80f55538a5fbf6526e2e1df93d9bf4981eb6c2e7/contracts/koin/koin.cpp" target="_blank" rel="noopener noreferrer">KOIN token</a> (written in C++)</li>
+        <li><a href="https://github.com/koinos/koinos-contracts-as/blob/213277bc9c54dd049d7797a657dac890e8207560/contracts/vhp/assembly/Vhp.ts" target="_blank" rel="noopener noreferrer">VHP Token</a></li>
+    </ul>
+
+    <h3>References</h3>
+    <ul>
+        <li><a href="https://www.youtube.com/watch?v=lDsAQ7y9XTw" target="_blank" rel="noopener noreferrer">Koinos authority system explained by Michael Vandeberg (video)</a> </li>
+    </ul>
+</section>
+
+<section id="kcs-2">
+    <h2>KCS 2: NFT Collection Standard</h2>
+    <p><strong class="status">Status:</strong> Final</p>
+    <p class="authors"><strong>Authors:</strong> Ederlang (<a href="https://github.com/ederaleng" target="_blank" rel="noopener noreferrer">https://github.com/ederaleng</a>), Von Looten (<a href="https://github.com/vonlooten" target="_blank" rel="noopener noreferrer">https://github.com/vonlooten</a>), Justin W (<a href="https://github.com/jredbeard" target="_blank" rel="noopener noreferrer">https://github.com/jredbeard</a>), Dokterkraakbeen (<a href="https://github.com/Dokterkraakbeen" target="_blank" rel="noopener noreferrer">https://github.com/Dokterkraakbeen</a>)</p>
+
+    <p>A token contract standard for NFT collections on the Koinos blockchain.</p>
+
+    <h3>Long Description</h3>
+    <p>This standard is to define how NFT collections can work on the Koinos blockchain. The functionality is setup to closely mimic the <a href="https://eips.ethereum.org/EIPS/eip-721" target="_blank" rel="noopener noreferrer">ERC-721</a> standard on Ethereum. We believe that NFTs on Ethereum have become a common standard and our goal is to provide similar functionality here for users and developers who have come to expect this basic layer of functionality.</p>
+    <p>NFTs using this standard may include additional utility and functionality beyond this standard. This is just the base layer of functionality that is expected.</p>
+
+    <h3>Why</h3>
+    <p>By mimicking the Ethereum NFT collection standard this makes it easy to onboard NFT projects who may have already launched collections on other chains. Many tools and resources already available for working with NFT collections will already be compatible here and easy to implement on Koinos.</p>
+    <p>Further, by setting forth a standard for NFT collections developers can be sure that NFT marketplaces (including <a href="https://kollection.app" target="_blank" rel="noopener noreferrer">Kollection</a>) will be able to aggregate and display these NFT collections.</p>
+
+    <h3>Why the concept of "owner"?</h3>
+    <p>On Koinos contracts can be either upgradeable or immutable. A contract address is also a standard wallet address. This default behavior on Koinos is different than Ethereum and ERC-721 contracts.</p>
+    <p>By default, the wallet that can make changes to a contract is the address that uploaded the contract. If a contract is set to immutable (by blocking authorities) then the wallet used to upload the contract can no longer make changes. In our implementation of KCS-2 there is the concept of an "owner" address and the ability to transfer that ownership. That means that a collection owner could transfer the ownership of the collection to another individual or organization even if the contract is set to be immutable. Even though this is "unnecessary" to be default behavior on Koinos because standard wallet addresses can be contract addresses it's useful to understand why the concept of <code>owner</code> is used here.</p>
+    <p>In addition to having the ability to transfer ownership, having an <code>owner</code> means that front-ends can verify the collection owner in order to set certain things like off-chain metadata for a collection (YouTube link, Discord, etc).</p>
+
+    <h3>Specification</h3>
+    <p>At a minimum, an NFT contract using this standard will include the following methods and unique data:</p>
+
+    <h4>Read methods</h4>
+
+    <h5>name</h5>
+    <p>Returns the name of the NFT. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message name_arguments {}
+// Result
+message name_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>symbol</h5>
+    <p>Returns the symbol for the NFT. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message symbol_arguments {}
+// Result
+message symbol_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>uri</h5>
+    <p>A universal resource identifier that is a link to metadata formatted in <code>JSON</code> for individual items within the collection (each NFT). This is usually an <code>https</code> or <code>ipfs</code> link. The URI is the base path and the individual metadata contained is at <code>/&lt;item number&gt;</code>. As an example, if <code>https://somekoinosexample.com/mycollection</code> were the URI, and the first token is the hex string representation of '1', then the 1st item's metadata would be located at <code>https://somekoinosexample.com/mycollection/0x31</code> and the 2nd would be at <code>/0x32</code> and so forth.</p>
+    <p>This is one area where the implementation differs slightly from ERC-721. With ERC-721 a URI is set per-token, here it is set for the whole collection and the full path for a token's metadata is assumed based on the constructed path.</p>
+    <p>The metadata should include at a minimum a name, description, and a URI where the associated image can be found. Other properties are arbitrary and can be any properties you deem fit for your collection. Attributes are also optional but will often be used.</p>
+    <p>The JSON located at these URI's should follow this format (similar and compatible with ERC-721 format):</p>
+    <pre><code class="language-json">
+{
+    "name":"Collection Nft #1",
+    "description":"The first of this collection",
+    "attributes":[
+       {
+          "trait_type":"Awesome",
+          "value":"Yes"
+       },
+       {
+          "trait_type":"Likes Standards",
+          "value":"Loves Them"
+       }
+    ],
+    "my_arbitrary_custom_property": "totally ok!",
+    "image":"https://somekoinosexample.com/mycollection/images/0.png"
+}
+    </code></pre>
+    <p>Returns the endpoint to resolve the metadata.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message uri_arguments {}
+// Result
+message uri_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>owner</h5>
+    <p>Returns the owner of the collection.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message owner_arguments {}
+// Result
+message owner_result {
+    bytes value = 1 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h5>total_supply</h5>
+    <p>Returns the total supply of the NFT collection.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message total_supply_arguments {}
+// Result
+message total_supply_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>royalties</h5>
+    <p>Returns the royalties configuration.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+message royalty {
+    uint64 percentage = 1 [jstype = JS_STRING];
+    bytes address = 2 [(koinos.btype) = ADDRESS];
+}
+// Arguments
+message royalties_arguments {}
+// Result
+message royalties_result {
+    repeated royalty value = 1;
+}
+    </code></pre>
+
+    <h5>balance_of</h5>
+    <p>Returns how many NFTs a specific address holds.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message balance_of_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+}
+// Result
+message balance_of_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>owner_of</h5>
+    <p>Returns the owner of a specific NFT.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message owner_of_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+}
+// Result
+message owner_of_result {
+    bytes value = 1 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h5>get_approved</h5>
+    <p>Returns the account allowed to operate a specific NFT (apart from the owner).</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_approved_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+}
+// Result
+message get_approved_result {
+    bytes value = 1 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h5>is_approved_for_all</h5>
+    <p>Returns if an account is authorized to operate all NFTs of a specific owner.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message is_approved_for_all_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes operator = 2 [(koinos.btype) = ADDRESS];
+}
+// Return
+message is_approved_for_all_result {
+    bool value = 1;
+}
+    </code></pre>
+
+    <h4>Write methods</h4>
+
+    <h5>transfer_ownership</h5>
+    <p>Function to transfer the ownership of the collection to other account. Only the owner of the collection can perform this operation.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message transfer_ownership_arguments {
+    bytes value = 1 [(koinos.btype) = ADDRESS];
+}
+// Result
+message transfer_ownership_result {}
+    </code></pre>
+    <p>The method should emit <code>owner_event</code> upon success with the name <code>collections.owner_event</code>. The event should indicate the new owner and then the previous owner as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message owner_event {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h5>set_royalties</h5>
+    <p>Function to set the royalties. Only the owner of the collection can perform this operation.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+message royalty {
+    uint64 percentage = 1 [jstype = JS_STRING];
+    bytes address = 2 [(koinos.btype) = ADDRESS];
+}
+
+// Arguments
+message set_royalties_argument {
+    repeated royalty value = 1;
+}
+// Result
+message set_royalties_result {}
+    </code></pre>
+    <p>The method should emit <code>royalties_event</code> upon success with the name <code>collections.royalties_event</code>. The event should indicate the addresses of the royalties as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+message royalty {
+    uint64 percentage = 1 [jstype = JS_STRING];
+    bytes address = 2 [(koinos.btype) = ADDRESS];
+}
+
+// Event
+message royalties_event {
+    repeated royalty value = 1;
+}
+    </code></pre>
+
+    <h5>approve</h5>
+    <p>Grant permissions to other account to manage the NFTs owned by the user.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message approve_arguments {
+    bytes approver_address = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+}
+// Result
+message approve_result {}
+    </code></pre>
+    <p>The method should emit <code>token_approval_event</code> upon success with the name <code>collections.token_approval_event</code>. The event should indicate the approved address and then the approver address as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message token_approval_event {
+    bytes approver_address = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+}
+    </code></pre>
+
+    <h5>set_approval_for_all</h5>
+    <p>Grant permissions to other account to manage all Tokens owned by the user.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message set_approval_for_all_arguments {
+    bytes approver_address = 1 [(koinos.btype) = ADDRESS];
+    bytes operator_address = 2 [(koinos.btype) = ADDRESS];
+    bool approved = 3;
+}
+// Result
+message set_approval_for_all_result {}
+    </code></pre>
+    <p>The method should emit <code>operator_approval_event</code> upon success with the name <code>collections.operator_approval_event</code>. The event should indicate the operator address and then the approver address as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message operator_approval_event {
+    bytes approver_address = 1 [(koinos.btype) = ADDRESS];
+    bytes operator_address = 2 [(koinos.btype) = ADDRESS];
+    bool approved = 3;
+}
+    </code></pre>
+
+    <h5>mint</h5>
+    <p>Used by the contract owner to initially mint the NFT to a given address.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message mint_arguments {
+    bytes to = 1 [(koinos.btype) = ADDRESS];
+    bytes token_id = 2 [(koinos.btype) = HEX];
+}
+// Result
+message mint_result {}
+    </code></pre>
+    <p>The method should emit <code>mint_event</code> upon success with the name <code>collections.mint_event</code>. The event should indicate the recipient of the mint as an impacted account.</p>
+    <pre><code class="language-protobuf">
+// Event
+message mint_event {
+    bytes to = 1 [(koinos.btype) = ADDRESS];
+    bytes token_id = 2 [(koinos.btype) = HEX];
+}
+    </code></pre>
+
+    <h5>transfer</h5>
+    <p>This will transfer an NFT to a new owner. The authorization is checked using allowances and/or smart wallets as explained above.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message transfer_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+}
+message transfer_result {}
+    </code></pre>
+    <p>The method should emit <code>transfer_event</code> upon success with the name <code>collections.transfer_event</code>. The event should indicate the receiver and then the sender as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message transfer_event {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+}
+    </code></pre>
+
+    <h5>burn (optional)</h5>
+    <p>Burns an amount of NFT from an address. The authorization is checked using allowances and/or smart wallets as explained above.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message burn_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+}
+// Result
+message burn_result {}
+    </code></pre>
+    <p>The method should emit <code>burn_event</code> upon success with the name <code>collections.burn_event</code>. The event should indicate the previous owner as an impacted account.</p>
+    <pre><code class="language-protobuf">
+// Event
+message burn_event {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes token_id = 2 [(koinos.btype) = HEX];
+}
+    </code></pre>
+
+    <h3>Expected Unique Data and Types</h3>
+    <p>With our proposed implementation you would set the following constants before uploading your contract:</p>
+    <ul>
+        <li><code>NAME</code> - a string for the human readable name of a collection</li>
+        <li><code>SYMBOL</code> - a string for the symbol used for this collection (all uppercase)</li>
+        <li><code>MINT_PRICE</code> - a u64 for the price to mint an NFT for a collection in satoshis (KOIN has a precision of 8)</li>
+        <li><code>MINT_FEE</code> - a boolean (true/false). If set, addresses other than the owner can mint NFTs for the <code>MINT_PRICE</code></li>
+        <li><code>MAX_SUPPLY</code> - this is the maximum amount of mintable tokens (NFTs) in your collection.</li>
+        <li><code>URI</code> - a string that contains the metadata URI (can be ipfs or https)</li>
+        <li><code>OWNER</code> - A Base58 decoded Unit8Array which is the address of the initial contract owner</li>
+        <li><code>TOKEN_PAY</code> - this is the type of token accepted for minting. If using KOIN, for harbinger testnet, this would be <code>19JntSm8pSNETT9aHTwAUHC5RMoaSmgZPJ</code>. For mainnet, this would be <code>15DJN4a8SgrbGhhGksSBASiSYjGnMU8dGL</code>.</li>
+        <li><code>ADDRESS_PAY</code> - this is the address that will receive the funds for minting.</li>
+    </ul>
+
+    <h4>Token ID's</h4>
+    <p>The token ID is stored as a type <code>bytes</code> and is serialized as hex. On Ethereum with ERC-721, a token ID is of type <code>uint256</code> - this specific type is not available in protobuf so <code>bytes</code> is used instead because it can fit the same data that you could in a <code>uint256</code> to try to mimic this standard.</p>
+    <p>Any hex will work, however, we recommend using hex string representation for token ID's. As an example, a string of <code>"1"</code> would be <code>0x31</code>. In the case of non-numerical token ID's, such as <a href="https://kap.domains/" target="_blank" rel="noopener noreferrer">KAP domains</a>, an example string of <code>"kollection.koin"</code> would be <code>0x6b6f6c6c656374696f6e2e6b6f696e</code>.</p>
+    <p>The supplied example implementation contract will automatically mint in numerical order as hex strings.</p>
+    <p>An example NodeJS implementation for encoding/decoding hex strings:</p>
+    <pre><code class="language-javascript">
+function encodeHex(str) {
+     return `0x${Buffer.from(str, 'utf-8').toString('hex')}`;
+}
+
+function decodeHex(str) {
+     if (str.startsWith('0x')) {
+         str = str.slice(2);
+     }
+     return `${Buffer.from(str, 'hex').toString('utf-8')}`;
+}
+
+module.exports = { encodeHex, decodeHex}
+    </code></pre>
+    <p>NodeJS can handle this using the built-in <code>Buffer.from</code> in any recent version.</p>
+    <p>If you need to do this decoding/encoding at the browser level, both <code>web3.js</code> (for Ethereum) and <a href="https://github.com/joticajulian/koilib" target="_blank" rel="noopener noreferrer">koilib</a> for Koinos provide browser safe helper functions.</p>
+    <p>A front end implementation using Koilib might look something like this:</p>
+    <pre><code class="language-javascript">
+import { utils } from "koilib";
+
+function encodeHex(str) {
+     let buffer = new TextEncoder().encode(str);
+     return `0x${utils.toHexString(buffer)}`;
+}
+
+function decodeHex(str) {
+     if (str.startsWith('0x')) {
+         str = str.slice(2);
+     }
+     let buffer = utils.toUint8Array(str);
+     return new TextDecoder().decode(buffer);
+}
+    </code></pre>
+
+    <h3>Events</h3>
+    <p>An NFT collection contract is expected to emit certain events.</p>
+    <ul>
+        <li><code>collections.royalties_event</code> - emitted when <code>set_royalties</code> is used to set royalties</li>
+        <li><code>collections.owner_event</code> - emitted when ownership is transferred to another address</li>
+        <li><code>collections.mint_event</code> - emitted when a new NFT (or NFTs) is minted</li>
+        <li><code>collections.transfer_event</code> - emitted when an NFT is transferred</li>
+        <li><code>collections.token_approval_event</code> - emitted when approval is given to transfer an NFT to another wallet from another contract (such as a marketplace)</li>
+    </ul>
+
+    <h3>Burning NFTs</h3>
+    <p>While the concept of burning is part of the <code>KCS-1</code> token standard, it is not in <code>KCS-2</code>. The reason for this is so that the supply stays the same and the <code>MAX_SUPPLY</code> is always constant. If you want to "burn" a particular NFT so that it can no longer be accessed and used, you should instead transfer it to the standard burn account address.</p>
+
+    <h3>Where to find and how to use</h3>
+    <p>There is a reference implementation for launching a NFT collection following this standard <a href="https://github.com/kollection-nft/collection-base" target="_blank" rel="noopener noreferrer">available here</a>. It uses the AssemblyScript SDK which you can read more about <a href="https://docs.koinos.io/quickstart/contract-developer-guide/" target="_blank" rel="noopener noreferrer">here</a> in the official Koinos smart contract developer documentation.</p>
+
+    <h3>References</h3>
+    <p>Our implementation is built and extended based on the original example from <a href="https://github.com/roaminro" target="_blank" rel="noopener noreferrer">Roamin</a>'s NFT example contract <a href="https://github.com/roaminro/koinos-sdk-as-examples/tree/main/nft" target="_blank" rel="noopener noreferrer">located here</a>. Thanks Roamin!</p>
+</section>
+
+<section id="kcs-3">
+    <h2>KCS 3: Token Standard that mimics ERC-20</h2>
+    <p><strong class="status">Status:</strong> Final</p>
+    <p class="authors"><strong>Authors:</strong> Julián González (<a href="https://github.com/joticajulian" target="_blank" rel="noopener noreferrer">https://github.com/joticajulian</a>)</p>
+
+    <p>A contract standard for tokens on the Koinos blockchain.</p>
+
+    <h3>Long Description</h3>
+    <p>This standard is to define how tokens can work on the Koinos blockchain. The functionality is setup to closely mimic the <a href="https://eips.ethereum.org/EIPS/eip-20" target="_blank" rel="noopener noreferrer">ERC-20</a> standard on Ethereum. Tokens on Ethereum have become a common standard and our goal is to provide similar functionality here for Koinos users and developers who have come to expect this basic layer of functionality in a token contract.</p>
+    <p>Tokens using this standard may include additional utility and functionality beyond this standard in their smart contracting. This is only a base layer of functionality that is expected.</p>
+
+    <h3>Why</h3>
+    <p>The KCS-1 token standard is a good solution for smart wallets but it puts in risks the normal accounts (typical accounts without a contract linked to them) because there are no allowances.</p>
+    <p>Let's see an example:</p>
+    <ul>
+        <li>Alice interacts with a scam contract.</li>
+        <li>In the popup to sign the transaction she only sees the operation of this contract: get_airdrop(). She signs the transaction and broadcast it to the blockchain.</li>
+        <li>Now this contract is called.</li>
+        <li>The scam contract now calls the KOIN contract requesting a transfer of all funds from Alice.</li>
+        <li>The KOIN contract is called.</li>
+        <li>The KOIN contract calls the <code>check_authority</code> system call to verify if Alice has approved this operation.</li>
+        <li>Alice doesn't have a smart contract to resolve authorizations then the blockchain checks the signatures.</li>
+        <li>As the transaction is signed by Alice then the KOIN transfer is accepted, causing as a result the execution of the scam.</li>
+    </ul>
+    <p>The KCS-1 contains a section explaining the authorization process and functionality of <code>check_authority</code>. The problem with this system call is that it is useful only for accounts that have smart wallets to resolve authorizations, but normal accounts are in risk and people should not interact with contracts they don't trust because the popup to sign the transaction will not be able to alert them what will happen behind the scenes (the blockchain also has the <code>broadcast:false</code> option to be able to check events without broadcasting the transaction, but this option has also security risks not covered in this article).</p>
+    <p>Take into account that we just mentioned the KOIN contract in the example, but the scam could call all assets at the same time (tokens using KCS-1 standard) and steal them all.</p>
+
+    <h3>How this is solved on ethereum?</h3>
+    <p>The <a href="https://eips.ethereum.org/EIPS/eip-20" target="_blank" rel="noopener noreferrer">ERC-20 token</a> from ethereum solves this by the introduction of allowances. Following the previous example, Alice must approve the transfer before calling the scam contract. In simple terms, the popup to sign the transaction will show to Alice that she is authorizing a <code>spender</code> to transfer her tokens. In this way she will know in advance what actions are permitted during the execution of the transaction.</p>
+
+    <h3>What changes between KCS-1 and KCS-3?</h3>
+    <p>KCS-3 introduces allowances. At the same time the <code>check_authority</code> system call is not used anymore. As consecuence, if the user has a smart wallet to resolve authorizations it will not be called. If the user wants to use smart wallets then the smart wallet should call the token contract in order to set the allowance.</p>
+    <p>For reference, the KCS-4 token standard resolves the security risks mentioned here and takes back the <code>check_authority</code> to be able to use smart wallets to resolve authorizations, but for the present KCS-3 standard this option is removed.</p>
+
+    <h3>Specification</h3>
+    <p>At a minimum, a token contract using this standard will include the following methods and unique data:</p>
+
+    <h4>Read methods</h4>
+
+    <h5>name</h5>
+    <p>Returns the name of the token. No arguments required.</p>
+    <p>Protobuf definition</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message name_arguments {}
+// Result
+message name_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>symbol</h5>
+    <p>Returns the symbol for the token. No arguments required.</p>
+    <p>Protobuf definition</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message symbol_arguments {}
+// Result
+message symbol_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>decimals</h5>
+    <p>Returns the decimal precision of the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message decimals_arguments {}
+// Result
+message decimals_result {
+    uint32 value = 1;
+}
+    </code></pre>
+
+    <h5>total_supply</h5>
+    <p>Returns the total supply of the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message total_supply_arguments {}
+// Result
+message total_supply_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>balance_of</h5>
+    <p>Returns how many tokens a specific address holds.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message balance_of_arguments {
+    bytes owner = 1 [(btype) = ADDRESS];
+}
+// Result
+message balance_of_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>get_info (optional)</h5>
+    <p>Returns name, symbol, and decimals in a single call.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_info_arguments {}
+// Result
+message get_info_result {
+    string name = 1;
+    string symbol = 2;
+    uint32 decimals = 3;
+};
+    </code></pre>
+
+    <h5>allowance</h5>
+    <p>Returns the allowance defined for a specific account.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message allowance_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes spender = 2 [(koinos.btype) = ADDRESS];
+}
+// Result
+message allowance_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>get_allowances</h5>
+    <p>Returns a paginated list of allowances defined in an account.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+enum direction {
+    ascending = 0;
+    descending = 1;
+}
+
+message spender_value {
+    bytes spender = 1 [(koinos.btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+
+// Arguments
+message get_allowances_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes start = 2 [(koinos.btype) = ADDRESS];
+    int32 limit = 3;
+    direction direction = 4;
+}
+
+// Result
+message get_allowances_result {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    repeated spender_value allowances = 2;
+}
+    </code></pre>
+
+    <h4>Write methods</h4>
+
+    <h5>mint</h5>
+    <p>Used by the contract owner to initially mint the token to a given address.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message mint_arguments {
+    bytes to = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+// Result
+message mint_result {}
+    </code></pre>
+    <p>The method should emit a <code>mint_event</code> upon success. The event should indicate the recipient of the mint as an impacted account. The name of the event must be <code>token.mint_event</code>.</p>
+    <pre><code class="language-protobuf">
+// Event
+message mint_event {
+    bytes to = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>transfer</h5>
+    <p>This will transfer tokens to a new owner. <strong>Note:</strong> The description mentions authorization via <code>check_authority</code>, which contradicts the main explanation of KCS-3 using allowances instead. This likely needs correction in the source.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message transfer_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+}
+// Result
+message transfer_result {}
+    </code></pre>
+    <p>The transfer event should emit a <code>transfer_event</code> upon success. The event should indicate the receiver and then the sender as impacted accounts. The name of the event must be <code>token.transfer_event</code>.</p>
+    <pre><code class="language-protobuf">
+// Event
+message transfer_event {
+    bytes from = 1 [(btype) = ADDRESS];
+    bytes to = 2 [(btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>burn (optional)</h5>
+    <p>Burns an amount of token from an address. <strong>Note:</strong> The description mentions authorization via <code>check_authority</code>, which contradicts the main explanation of KCS-3 using allowances instead. This likely needs correction in the source.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message burn_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+// Result
+message burn_result {}
+    </code></pre>
+    <p>The method should emit a <code>burn_event</code> upon success. The event should indicate the source as an impacted account. The name of the event must be <code>token.burn_event</code>.</p>
+    <pre><code class="language-protobuf">
+// Event
+message burn_event {
+    bytes from = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>approve</h5>
+    <p>Grant permissions to other account to manage the tokens owned by the user.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message approve_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes spender = 2 [(koinos.btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+}
+// Result
+message approve_result {}
+    </code></pre>
+    <p>The method should emit an <code>approve_event</code> upon success. The event should indicate the spender and then the owner as the impacted accounts. The name of the event must be <code>token.approve_event</code>.</p>
+    <pre><code class="language-protobuf">
+// Event
+message approve_event {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes spender = 2 [(koinos.btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h3>Expected Unique Data and Types</h3>
+    <p>With the proposed implementation developers would set the following constants before uploading their token contract:</p>
+    <ul>
+        <li><code>NAME</code> - a string for the human readable name of the token.</li>
+        <li><code>SYMBOL</code> - a string for the symbol or ticker used for the token (all uppercase).</li>
+        <li><code>DECIMALS</code> - a u32 for the decimal precision of the token.</li>
+    </ul>
+
+    <h3>Implementation</h3>
+    <p>The implementation of this token contract can be found at:</p>
+    <ul>
+        <li><a href="https://github.com/joticajulian/koinos-contracts-as/blob/v1.2.4/contracts/token/assembly/Token.ts" target="_blank" rel="noopener noreferrer">Token contract v1.0.3 - @koinosbox/contracts@v1.2.4</a>.</li>
+    </ul>
+
+    <h3>References</h3>
+    <ul>
+        <li><a href="https://peakd.com/koinos/@jga/improve-security-koinos" target="_blank" rel="noopener noreferrer">Improve security in koinos (by @jga)</a>.</li>
+    </ul>
+</section>
+
+<section id="kcs-4">
+    <h2>KCS 4: Token Standard that mimics ERC-20 and supports Koinos authority system</h2>
+    <p><strong class="status">Status:</strong> Pending</p>
+    <p class="authors"><strong>Authors:</strong> Julián González (<a href="https://github.com/joticajulian" target="_blank" rel="noopener noreferrer">https://github.com/joticajulian</a>)</p>
+
+    <p>A contract standard for tokens on the Koinos blockchain.</p>
+    <blockquote><p>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119" target="_blank" rel="noopener noreferrer">RFC 2119</a>.</p></blockquote>
+
+    <h3>Long Description</h3>
+    <p>This standard is to define how tokens can work on the Koinos blockchain. The functionality is setup to closely mimic the <a href="https://eips.ethereum.org/EIPS/eip-20" target="_blank" rel="noopener noreferrer">ERC-20</a> standard on Ethereum. At the same time, it supports the Koinos authority system, which is useful for smart wallets.</p>
+
+    <h3>Why</h3>
+    <p>This standard takes the best of the token standards KCS-1 and KCS-3. On one hand, the KCS-1 is useful for smart wallets by using the Koinos authority system, however it puts in risk the normal accounts. On the other hand, the KCS-3 resolves the risks of normal accounts but it ignores the Koinos authority system.</p>
+    <p>The difficulty of merging both standards is because before 2024-02-12 there was not possible to classify accounts by type (smart wallets / normal accounts) inside the token contract. But now this is possible thanks to <code>get_contract_metadata</code> system call, then the KCS-4 token standard have allowances to put normal accounts in safe place and supports the Koinos authority system for smart wallets.</p>
+
+    <h3>Allowance and check authority</h3>
+
+    <h4>Authorization</h4>
+    <p>Authorization is a key component of this standard. There is a more complex authority check that is used by most functions. For ease of implementation, the AS-SDK v1.2.0 and newer contains the function <code>System.checkAccountAuthority</code> which implements the new logic. By default</p> <p>The function to verify authorizations is extended in this way:</p>
+    <ol>
+        <li>Check if the caller of the operation is allowed to do it by checking the allowances.</li>
+        <li>If the contract caller is the owner of the tokens then the operation is accepted.</li>
+        <li>If there is a contract caller AND the owner doesn't have a contract to resolve authorizations then the operation is rejected.</li>
+        <li>If the points above do not apply then use the native check authority function:
+            <ol type="a">
+                <li>If the owner has a smart contract to resolve authorizations then call it.</li>
+                <li>If the owner does not have a smart contract then check if the transaction is signed by the owner.</li>
+            </ol>
+        </li>
+    </ol>
+    <p>Consider the case where the owner uses a normal account (not smart wallet). If he interacts directly with the token contract then the signature will be validated (point 4.b). If he interacts with a DEX and the DEX makes a transfer in name of the owner then the allowance will be validated (point 1), otherwise it will be rejected (point 3). In this way allowances protect the assets of the users, because they have to set them in advance before a third contract tries to execute a transfer.</p>
+    <p>Now consider the case where the owner has a smart wallet. Consider also that he does not set any allowance in the token contract. If he interacts directly with the token contract then the smart wallet will be called (point 4.a). If he interacts with a DEX and the DEX makes a transfer in name of the owner then the smart wallet will be called as well (point 4.a). This means that the token contract supports the Koinos authority system, which is useful for smart wallets.</p>
+    <p>This authorization is required for <code>transfer</code> and <code>burn</code>. Steps 2-4 are required for <code>approve</code>. For ease of implementation, the AS-SDK v1.2.0 and newer contains the function <code>System.checkAccountAuthority</code> which implements steps 2-4 outlines above. In addition, the existing function <code>System.requireAuthority</code> has an additional parameter for enhanced security that will call <code>checkAccountAuthority</code>. By default, <code>requireAuthority</code> will use the enhanced security, so any contract already using <code>requireAuthority</code> can take advantage of the improved security outlined above by simply upgrading their SDK version.</p>
+
+    <h3>Specification</h3>
+    <p>At a minimum, a token contract using this standard must include the following methods and events. Some methods in this specification are optional and are documented accordingly.</p>
+    <p>A token contract should check inputs and return meaningful error messages. For example, if a transfer argument does not contain one of the addresses should exit with a meaningful error message.</p>
+
+    <h4>Memos</h4>
+    <p>Some functions allow for user specified memos. These are <code>mint</code>, <code>transfer</code>, <code>burn</code>, and <code>approve</code>. For the purposes of this specification, they are not intended for internal use by a token, but are there for protocols external to the blockchain to take advantage of. Please follow these guidelines for all <code>memo</code> fields.</p>
+    <p>The memo field is optional for the user, but must be supported by the contract. The contents of the memo must not be error checked as the contents could include non-ASCII characters such as Unicode for international messages or the entire byte range for encrypted/encoded messages.</p>
+    <p>If a user provides a memo, it must be included in the corresponding event (e.g. If a memo is present on <code>transfer_arguments</code> it must be present on the corresponding <code>transfer_event</code> if the transfer succeeds).</p>
+
+    <h4>Read methods</h4>
+
+    <h5>name</h5>
+    <p>Returns the name of the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message name_arguments {}
+// Result
+message name_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>symbol</h5>
+    <p>Returns the symbol for the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message symbol_arguments {}
+// Result
+message symbol_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>decimals</h5>
+    <p>Returns the decimal precision of the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message decimals_arguments {}
+// Result
+message decimals_result {
+    uint32 value = 1;
+}
+    </code></pre>
+
+    <h5>total_supply</h5>
+    <p>Returns the total supply of the token. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message total_supply_arguments {}
+// Result
+message total_supply_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>balance_of</h5>
+    <p>Returns how many tokens a specific address holds.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message balance_of_arguments {
+    bytes owner = 1 [(btype) = ADDRESS];
+}
+// Result
+message balance_of_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>get_info (optional)</h5>
+    <p>Returns name, symbol, and decimals in a single call.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_info_arguments {}
+// Result
+message get_info_result {
+    string name = 1;
+    string symbol = 2;
+    uint32 decimals = 3;
+};
+    </code></pre>
+
+    <h5>allowance</h5>
+    <p>Returns the allowance defined for a specific account.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message allowance_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes spender = 2 [(koinos.btype) = ADDRESS];
+}
+// Result
+message allowance_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>get_allowances</h5>
+    <p>Returns a paginated list of allowances defined in an account.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+message spender_value {
+    bytes spender = 1 [(koinos.btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+}
+
+// Arguments
+message get_allowances_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes start = 2 [(koinos.btype) = ADDRESS];
+    int32 limit = 3;
+    bool descending = 4;
+}
+
+// Result
+message get_allowances_result {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    repeated spender_value allowances = 2;
+}
+    </code></pre>
+
+    <h4>Write methods</h4>
+
+    <h5>mint</h5>
+    <p>Used by the contract owner to initially mint the token to a given address. Authorization of the mint function is left up to the developer. Most contracts will require the contract itself to authorize (sign with the key associated with the contract) or delegate to another address that is either another contract or an address the developer controls.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message mint_arguments {
+    bytes to = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+    optional string memo = 3;
+}
+// Result
+message mint_result {}
+    </code></pre>
+    <p>The method must emit a <code>mint_event</code> upon success. The event must indicate the recipient of the mint as an impacted account. The name of the event must be <code>token.mint_event</code>.</p>
+    <pre><code class="language-protobuf">
+// Event
+message mint_event {
+    bytes to = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+    optional string memo = 3;
+}
+    </code></pre>
+
+    <h5>transfer</h5>
+    <p>This will transfer tokens to a new owner. Transfer is authorized by the improved authority outlined <a href="#kcs-4-authorization">above</a>.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message transfer_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+    optional string memo = 4;
+}
+// Result
+message transfer_result {}
+    </code></pre>
+    <p>The transfer event must emit a <code>transfer_event</code> upon success. The event must indicate the receiver and then the sender as impacted accounts. The name of the event must be <code>token.transfer_event</code>. If a memo is provided by the user, it must be included in the event.</p>
+    <pre><code class="language-protobuf">
+// Event
+message transfer_event {
+    bytes from = 1 [(btype) = ADDRESS];
+    bytes to = 2 [(btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+    optional string memo = 4;
+}
+    </code></pre>
+
+    <h5>burn (optional)</h5>
+    <p>Burns an amount of token from an address. Burn is authorized by the improved authority outlined <a href="#kcs-4-authorization">above</a>.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message burn_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+    optional string memo = 3;
+}
+// Result
+message burn_result {}
+    </code></pre>
+    <p>The method must emit a <code>burn_event</code> upon success. The event must indicate the source as an impacted account. The name of the event must be <code>token.burn_event</code>.</p>
+    <pre><code class="language-protobuf">
+// Event
+message burn_event {
+    bytes from = 1 [(btype) = ADDRESS];
+    uint64 value = 2 [jstype = JS_STRING];
+    optional string memo = 3;
+}
+    </code></pre>
+
+    <h5>approve</h5>
+    <p>Grant permissions to other account to manage the tokens owned by the user. Approve is authorized by the improved authority outlined <a href="#kcs-4-authorization">above</a>.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message approve_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes spender = 2 [(koinos.btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+    optional string memo = 4;
+}
+// Result
+message approve_result {}
+    </code></pre>
+    <p>The method must emit an <code>approve_event</code> upon success. The event must indicate the spender and then the owner as the impacted accounts. The name of the event must be <code>token.approve_event</code>.</p>
+    <pre><code class="language-protobuf">
+// Event
+message approve_event {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes spender = 2 [(koinos.btype) = ADDRESS];
+    uint64 value = 3 [jstype = JS_STRING];
+    optional string memo = 4;
+}
+    </code></pre>
+
+    <h5>authorize (optional)</h5>
+    <p>Optionally, token contracts can implement an authorize override that defaults to System authority using <code>System.checkSystemAuthority</code>. This allows any tokens inadvertently sent to the token contract itself to be retrieved and sent to their rightful owner via a governance proposal.</p>
+
+    <h3>Implementation</h3>
+    <p>The implementation of this token contract can be found at:</p>
+    <ul>
+        <li><a href="https://github.com/joticajulian/koinos-contracts-as/blob/v2.0.2/contracts/token/assembly/Token.ts" target="_blank" rel="noopener noreferrer">Token contract v1.0.2 - @koinosbox/contracts@v2.0.2</a> (check also latest updates).</li>
+    </ul>
+    <p>With this example implementation developers would set the following constants before uploading their token contract:</p>
+    <ul>
+        <li><code>NAME</code> - a string for the human readable name of the token.</li>
+        <li><code>SYMBOL</code> - a string for the symbol or ticker used for the token (all uppercase).</li>
+        <li><code>DECIMALS</code> - a u32 for the decimal precision of the token.</li>
+    </ul>
+
+    <h3>References</h3>
+    <ul>
+        <li><a href="https://peakd.com/koinos/@jga/check-authority-2-testnet" target="_blank" rel="noopener noreferrer">New system call in koinos - part1 (by @jga)</a>.</li>
+        <li><a href="https://peakd.com/koinos/@jga/new-koinos-system-call-live-in-the-testnet" target="_blank" rel="noopener noreferrer">New system call in koinos - part2 (by @jga)</a></li>
+    </ul>
+</section>
+
+<section id="kcs-5">
+    <h2>KCS 5: NFT Standard that mimics ERC-721 and supports Koinos authority system</h2>
+    <p><strong class="status">Status:</strong> Pending</p>
+    <p class="authors"><strong>Authors:</strong> Julián González (<a href="https://github.com/joticajulian" target="_blank" rel="noopener noreferrer">https://github.com/joticajulian</a>)</p>
+
+    <p>A contract standard for NFT collections on the Koinos blockchain.</p>
+    <blockquote><p>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.</p></blockquote>
+
+    <h3>Long Description</h3>
+    <p>This standard is to define how NFT collections can work on the Koinos blockchain. The functionality mimic the <a href="https://eips.ethereum.org/EIPS/eip-721" target="_blank" rel="noopener noreferrer">ERC-721</a> standard on Ethereum and extend it with new features. At the same time, it supports the Koinos authority system, which is useful for smart wallets.</p>
+
+    <h3>Why</h3>
+    <p>This standard introduces new features with respect to the standard KCS-2. Here is a summary of the principal changes:</p>
+    <ol>
+        <li><strong>Possibility to store metadata onchain</strong>. When the <code>uri</code> is defined or <code>token_uri</code> endpoint is used then the metadata is stored off-chain. However, if the <code>uri</code> is undefined and <code>token_uri</code> endpoint does not exist the metadata must be obtained from onchain from <code>metadata_of</code>. Thanks to this option, the developers don't have to setup an API for the contract.</li>
+        <li><strong>Function to get a paginated list of NFTs</strong>. One of the main barriers of the ERC-721 and KCS-2 is that it's not possible know what is the list of NFTs in the collection, unless you setup a microservice that listen changes in the contract, or you rely in third parties offering this functionality. KCS-5 adds the paginated <code>get_tokens</code> and <code>get_tokens_by_owner</code> calls.</li>
+        <li><strong>Function to list approvals</strong>. This feature allows users to know what are the approvals they have set to third parties. In this sense, they will have more control on their assets.</li>
+        <li><strong>Koinos System Authority</strong>. Introduction of the new system call in Koinos to be able to classify accounts by type, in order to give safety to the users that don't have smart wallets and at the same time be able to call users' contracts to resolve authorities in case they use smart wallets.</li>
+    </ol>
+
+    <h3>Allowance and check authority</h3>
+    <p>The function to verify authorizations is extended in this way:</p>
+    <ol>
+        <li>Check if the caller of the operation is allowed to do it by checking the allowances (approval of a single NFT, or approval for all NFTs).</li>
+        <li>If the contract caller is the owner of the NFT then the operation is accepted.</li>
+        <li>If there is a contract caller AND the owner doesn't have a contract to resolve authorizations then the operation is rejected.</li>
+        <li>If the points above do not apply then use the native check authority function:
+            <ol type="a">
+                <li>If the owner has a smart contract to resolve authorizations then call it.</li>
+                <li>If the owner does not have a smart contract then check if the trasaction is signed by the owner.</li>
+            </ol>
+        </li>
+    </ol>
+    <p>Consider the case where the owner uses a normal account (not smart wallet). If he interacts directly with the NFT contract then the signature will be validated (point 4.b). If he interacts with a DEX and the DEX makes a transfer in name of the owner then the allowance will be validated (point 1), otherwise it will be rejected (point 3). In this way allowances protect the assets of the users, because they have to set them in advance before a third contract tries to execute a transfer.</p>
+    <p>Now consider the case where the owner has a smart wallet. Consider also that he does not set any allowance in the NFT contract. If he interacts directly with the NFT contract then the smart wallet will be called (point 4.a). If he interacts with a DEX and the DEX makes a transfer in name of the owner then the smart wallet will be called as well (point 4.a). This means that the NFT contract supports the Koinos authority system, which is useful for smart wallets.</p>
+
+    <h3>Specification</h3>
+    <p>At a minimum, a NFT contract using this standard will include the following methods and unique data:</p>
+
+    <h4>Read methods</h4>
+
+    <h5>name</h5>
+    <p>Returns the name of the NFT. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message name_arguments {}
+// Result
+message name_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>symbol</h5>
+    <p>Returns the symbol for the NFT. No arguments required.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message symbol_arguments {}
+// Result
+message symbol_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>uri</h5>
+    <p>Returns the endpoint to resolve the metadata. If the uri is empty and <code>token_uri</code> is not used then <code>metadata_of</code> must return the metadata of the NFT.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message uri_arguments {}
+// Result
+message uri_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>token_uri</h5>
+    <p>Returns the endpoint for an individual token to resolve the metadata. If the uri is empty and <code>token_uri</code> is not used then <code>metadata_of</code> must return the metadata of the NFT.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message token_uri_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+}
+// Result
+message token_uri_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>get_info (optional)</h5>
+    <p>Returns name, symbol, decimals, and description in a single call.</p> <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_info_arguments {}
+// Result
+message get_info_result {
+    string name = 1;
+    string symbol = 2;
+    uint32 uri = 3; // Note: Source says uint32 uri, likely meant string uri or similar
+    string description = 4;
+};
+    </code></pre>
+
+    <h5>owner</h5>
+    <p>Returns the owner of the collection.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message owner_arguments {}
+// Result
+message owner_result {
+    bytes value = 1 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h5>total_supply</h5>
+    <p>Returns the total supply of the NFT collection.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message total_supply_arguments {}
+// Result
+message total_supply_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>royalties</h5>
+    <p>Returns the royalties configuration.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+message royalty {
+    uint64 percentage = 1 [jstype = JS_STRING];
+    bytes address = 2 [(koinos.btype) = ADDRESS];
+}
+// Arguments
+message royalties_arguments {}
+// Result
+message royalties_result {
+    repeated royalty value = 1;
+}
+    </code></pre>
+
+    <h5>balance_of</h5>
+    <p>Returns how many NFTs a specific address holds.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message balance_of_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+}
+// Result
+message balance_of_result {
+    uint64 value = 1 [jstype = JS_STRING];
+}
+    </code></pre>
+
+    <h5>owner_of</h5>
+    <p>Returns the owner of a specific NFT.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message owner_of_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+}
+// Result
+message owner_of_result {
+    bytes value = 1 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h5>metadata_of</h5>
+    <p>Returns the metadata of a specific NFT. If the metadata is empty then <code>URI</code> must return an endpoint to retrieve the metadata.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message metadata_of_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+}
+// Result
+message metadata_of_result {
+    string value = 1;
+}
+    </code></pre>
+
+    <h5>get_tokens</h5>
+    <p>Returns a paginated list of NFTs in the collection.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_tokens_arguments {
+    bytes start = 1 [(koinos.btype) = HEX];
+    int32 limit = 2;
+    bool descending = 3;
+}
+// Result
+message get_tokens_result {
+    repeated bytes values = 1 [(koinos.btype) = HEX];
+}
+    </code></pre>
+
+    <h5>get_tokens_by_owner</h5>
+    <p>Returns a paginated list of NFTs owned by a specific account.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_tokens_by_owner_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes start = 2 [(koinos.btype) = HEX];
+    int32 limit = 3;
+    bool descending = 4;
+}
+// Result
+message get_tokens_by_owner_result {
+    repeated bytes values = 1 [(koinos.btype) = HEX];
+}
+    </code></pre>
+
+    <h5>get_approved</h5>
+    <p>Returns the account allowed to operate a specific NFT (apart from the owner).</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_approved_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+    bytes start = 2 [(koinos.btype) = ADDRESS];
+    uint32 limit = 3;
+    bool descending = 4;
+}
+// Result
+message get_approved_result {
+    bytes value = 1 [(koinos.btype) = ADDRESS];
+    repeated bytes values = 2 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+    <p>This is a paginated API, but to support backwards compatibility, it should behave in the following way. For KCS-2, <code>start</code>, <code>limit</code>, and <code>descending</code> are not present. The contract must detect this scenario and in that case return the first address in the <code>value</code> field.</p>
+    <p>Single token approvals can be handled in one of two ways. In KCS-2, a token could only have one address approved at a time (separate from addresses approved for all tokens). KCS-5 can continue working in this way, but can also support multiple approvals per token. If multiple approvals per token are allowed then then the first value should be sent in the <code>value</code> field and the entire result can be returned in <code>values</code>.</p>
+
+    <h5>is_approved_for_all</h5>
+    <p>Returns if an account is authorized to operate all NFTs of a specific owner.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message is_approved_for_all_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes operator = 2 [(koinos.btype) = ADDRESS];
+}
+// Return
+message is_approved_for_all_result {
+    bool value = 1;
+}
+    </code></pre>
+
+    <h5>get_operator_approvals</h5>
+    <p>Returns a paginated list of all accounts allowed to operate all NFTs of a specific owner.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message get_operator_approvals_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes start = 2 [(koinos.btype) = ADDRESS];
+    int32 limit = 3;
+    bool descending = 4;
+}
+// Return
+message get_operator_approvals_result {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    repeated bytes operators = 2 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h4>Write methods</h4>
+
+    <h5>transfer_ownership</h5>
+    <p>Function to transfer the ownership of the collection to other account. Only the owner of the collection can perform this operation.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message transfer_ownership_arguments {
+    bytes to = 1 [(koinos.btype) = ADDRESS];
+}
+// Result
+message transfer_ownership_result {}
+    </code></pre>
+    <p>The method should emit <code>owner_event</code> upon success with the name <code>collections.owner_event</code>. The event should indicate the new owner and then the previous owner as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message owner_event {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+}
+    </code></pre>
+
+    <h5>set_royalties</h5>
+    <p>Function to set the royalties. Only the owner of the collection can perform this operation.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+message royalty {
+    uint64 percentage = 1 [jstype = JS_STRING];
+    bytes address = 2 [(koinos.btype) = ADDRESS];
+}
+// Arguments
+message set_royalties_argument {
+    repeated royalty value = 1;
+}
+// Result
+message set_royalties_result {}
+    </code></pre>
+    <p>The method should emit <code>royalties_event</code> upon success with the name <code>collections.royalties_event</code>. The event should indicate the addresses of the royalties as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message royalties_event {
+    repeated royalty value = 1;
+}
+    </code></pre>
+
+    <h5>set_metadata</h5>
+    <p>Function to set the metadata of the tokens. It should be a JSON converted to string.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message set_metadata_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+    string metadata = 2;
+}
+// Result
+message set_metadata_result {}
+    </code></pre>
+    <p>The method should emit <code>set_metadata_event</code> upon success with the name <code>collections.set_metadata_event</code>. The event should indicate the source as an impacted account.</p>
+    <pre><code class="language-protobuf">
+// Event
+message set_metadata_event {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+    string metadata = 2;
+}
+    </code></pre>
+
+    <h5>approve</h5>
+    <p>Grant permissions to other account to manage the NFTs owned by the user.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message approve_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS, deprecated = true];
+    bytes operator = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+    optional string memo = 4;
+    optional bool approve = 5;
+}
+// Result
+message approve_result {}
+    </code></pre>
+    <p>The method should emit <code>token_approval_event</code> upon success with the name <code>collections.token_approval_event</code>. The event should indicate the approved address and then the owner address as impacted accounts.</p>
+    <p>The <code>owner</code> field is deprecated, but present to preserve wire compatibility with KCS-2. When interacting with KCS-5, a user may choose to ignore the field, but if not and the owner does not match the token owner, an error MUST be returned regardless of whether the actual owner authorized the transaction.</p>
+    <p>The <code>approve</code> field is optional because KCS-2 implies approval using this method. Because it is optional, <code>approve</code> can be one of three states, true, false, and not set. If not set, then the operation should be treated as if <code>approve</code> was set to true.</p>
+    <pre><code class="language-protobuf">
+// Event
+message token_approval_event {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes operator = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+    optional string memo = 4;
+    optional bool approve = 5;
+}
+    </code></pre>
+
+    <h5>set_approval_for_all</h5>
+    <p>Grant permissions to other account to manage all Tokens owned by the user.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message set_approval_for_all_arguments {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes operator = 2 [(koinos.btype) = ADDRESS];
+    bool approved = 3;
+    optional string memo = 4;
+}
+// Result
+message set_approval_for_all_result {}
+    </code></pre>
+    <p>The method should emit <code>operator_approval_event</code> upon success with the name <code>collections.operator_approval_event</code>. The event should indicate the operator address and then the owner address as impacted accounts.</p>
+    <pre><code class="language-protobuf">
+// Event
+message operator_approval_event {
+    bytes owner = 1 [(koinos.btype) = ADDRESS];
+    bytes operator = 2 [(koinos.btype) = ADDRESS];
+    bool approved = 3;
+    optional string memo = 4;
+}
+    </code></pre>
+
+    <h5>mint</h5>
+    <p>Used by the contract owner to initially mint the NFT to a given address.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message mint_arguments {
+    bytes to = 1 [(koinos.btype) = ADDRESS];
+    bytes token_id = 2 [(koinos.btype) = HEX];
+    optional string memo = 3;
+}
+// Result
+message mint_result {}
+    </code></pre>
+    <p>The method should emit <code>mint_event</code> upon success with the name <code>collections.mint_event</code>. The event should indicate the recipient of the mint as an impacted account.</p>
+    <pre><code class="language-protobuf">
+// Event
+message mint_event {
+    bytes to = 1 [(koinos.btype) = ADDRESS];
+    bytes token_id = 2 [(koinos.btype) = HEX];
+    optional string memo = 3;
+}
+    </code></pre>
+
+    <h5>transfer</h5>
+    <p>This will transfer an NFT to a new owner. The authorization is checked using allowances and/or smart wallets as explained above.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message transfer_arguments {
+    bytes from = 1 [(koinos.btype) = ADDRESS, deprecated = true];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+    optional string memo = 4;
+}
+message transfer_result {}
+    </code></pre>
+    <p>The method should emit <code>transfer_event</code> upon success with the name <code>collections.transfer_event</code>. The event should indicate the receiver and then the sender as impacted accounts.</p>
+    <p>The <code>from</code> field is deprecated, but present to preserve wire compatibility with KCS-2. When using KCS-5, the user may choose to ignore the field, but if not and the owner does not match the token owner, an error must be returned regardless of whether the actual owner authorized the transaction.</p>
+    <pre><code class="language-protobuf">
+// Event
+message transfer_event {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes to = 2 [(koinos.btype) = ADDRESS];
+    bytes token_id = 3 [(koinos.btype) = HEX];
+    optional string memo = 4;
+}
+    </code></pre>
+
+    <h5>burn (optional)</h5>
+    <p>Burns an amount of NFT from an address. The authorization is checked using allowances and/or smart wallets as explained above.</p>
+    <p>Protobuf definition:</p>
+    <pre><code class="language-protobuf">
+// Arguments
+message burn_arguments {
+    bytes token_id = 1 [(koinos.btype) = HEX];
+    optional string memo = 2;
+}
+// Result
+message burn_result {}
+    </code></pre>
+    <p>The method should emit <code>burn_event</code> upon success with the name <code>collections.burn_event</code>. The event should indicate the previous owner as an impacted account.</p>
+    <pre><code class="language-protobuf">
+// Event
+message burn_event {
+    bytes from = 1 [(koinos.btype) = ADDRESS];
+    bytes token_id = 2 [(koinos.btype) = HEX];
+    optional string memo = 3;
+}
+    </code></pre>
+
+    <h3>Expected Unique Data and Types</h3>
+    <p>With the proposed implementation developers would set the following constants before uploading their NFT contract:</p>
+    <ul>
+        <li><code>NAME</code> - a string for the human readable name of the NFT collection.</li>
+        <li><code>SYMBOL</code> - a string for the symbol or ticker used for the NFT (all uppercase).</li>
+        <li><code>URI</code> - a string that contains the metadata URI (can be ipfs or https). When the metadata is stored onchain it should be empty.</li>
+    </ul>
+
+    <h3>Implementation</h3>
+    <p>The implementation of this NFT contract can be found at:</p>
+    <ul>
+        <li><a href="https://github.com/joticajulian/koinos-contracts-as/blob/v2.0.2/contracts/nft/assembly/Nft.ts" target="_blank" rel="noopener noreferrer">Nft contract v2.0.2 - @koinosbox/contracts@v2.0.2</a> (check also latest updates).</li>
+    </ul>
+</section>
 
 </body>
 </html>
